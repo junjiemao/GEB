@@ -623,37 +623,52 @@ def fix_longtable_columns(text):
     """
     将 \\begin{longtable}[]{@{}ll@{}} 等无约束列格式
     替换为按比例分配宽度的 p{} 列。
-
-    列宽策略：
-    - 1列：0.94\linewidth
-    - 2列：等分 0.47 各
-    - 3列：0.08 / 0.50 / 0.34（编号列 + 符号串列 + 注释列）
-    - 4列及以上：等分
+    例：ll → p{0.47\\linewidth}p{0.47\\linewidth}
     """
     count = 0
-
-    # 三列非均匀比例：第一列编号窄，第二列内容宽，第三列注释中等
-    _THREE_COL_WIDTHS = [0.08, 0.50, 0.34]
 
     def _replace(m):
         nonlocal count
         ls = m.group(3)          # 'lll' 等
         n = len(ls)
-        if n == 3:
-            col_spec = ' '.join(
-                f'>{{\\raggedright\\arraybackslash}}p{{{w}\\linewidth}}'
-                for w in _THREE_COL_WIDTHS
-            )
-        else:
-            w = round(0.94 / n, 3)
-            col_spec = ' '.join(
-                [f'>{{\\raggedright\\arraybackslash}}p{{{w}\\linewidth}}'] * n
-            )
+        # 总宽略小于 \linewidth（留少量 padding），每列等分
+        w = round(0.94 / n, 3)
+        col_spec = ' '.join([f'>{{\\raggedright\\arraybackslash}}p{{{w}\\linewidth}}'] * n)
         count += 1
         return f'{m.group(1)}{col_spec}{m.group(5)}'
 
     text = _LONGTABLE_COL_PAT.sub(_replace, text)
     return text, count
+
+
+# ──────────────────────────────────────────────────────────
+#  Fix 12: pandoc 错误列宽 0.08/0.50/0.34 → 0.44/0.08/0.40
+#
+#  pandoc 从 EPUB HTML 表格 CSS 读取列宽比例，将"内容|箭头|内容"
+#  3 列表生成为 p{0.08}/p{0.50}/p{0.34}（内容列只有 8%），
+#  导致文字按字换行。修正为标准对称三列：0.44/0.08/0.40。
+# ──────────────────────────────────────────────────────────
+
+_WRONG_3COL = (
+    r'>{\raggedright\arraybackslash}p{0.08\linewidth}'
+    r' >{\raggedright\arraybackslash}p{0.50\linewidth}'
+    r' >{\raggedright\arraybackslash}p{0.34\linewidth}'
+)
+_FIXED_3COL = (
+    r'>{\raggedright\arraybackslash}p{0.44\linewidth}'
+    r' >{\raggedright\arraybackslash}p{0.08\linewidth}'
+    r' >{\raggedright\arraybackslash}p{0.40\linewidth}'
+)
+
+
+def fix_wrong_3col_widths(text):
+    """
+    修正 pandoc 从 EPUB 读取 CSS 列宽时产生的错误比例：
+    将 0.08/0.50/0.34（内容列极窄）替换为 0.44/0.08/0.40（箭头列居中）。
+    """
+    n = text.count(_WRONG_3COL)
+    text = text.replace(_WRONG_3COL, _FIXED_3COL)
+    return text, n
 
 
 # ──────────────────────────────────────────────────────────
@@ -815,6 +830,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_tables = fix_longtable_columns(text)
     if verbose:
         print(f'  [9] longtable 列宽修正：{n_tables} 处')
+
+    # Fix 12
+    text, n_3col = fix_wrong_3col_widths(text)
+    if verbose:
+        print(f'  [12] 3列表错误宽度修正：{n_3col} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
