@@ -1,0 +1,63 @@
+name: Deploy Quartz to Cloudflare Pages
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "cloudflare-pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Quartz
+        uses: konstfish/quartz-build-action@v7
+        env:
+          QUARTZ_BASE_URL: ${{ vars.QUARTZ_BASE_URL || 'xmatrix.github.io/golden_bough' }}
+        with:
+          source: golden_bough
+          destination: _site
+          page_title: ${{ vars.QUARTZ_PAGE_TITLE || 'The Golden Bough' }}
+          quartz_config: .github/quartz/quartz.config.ts
+          quartz_layout: .github/quartz/quartz.layout.ts
+          quartz_repo_ref: v4
+
+      - name: Ensure Cloudflare Pages Project
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          set -euo pipefail
+
+          echo "Ensuring Cloudflare Pages project: ${CLOUDFLARE_PAGES_PROJECT}"
+          set +e
+          CREATE_OUT=$(npx --yes wrangler@3.90.0 pages project create "${CLOUDFLARE_PAGES_PROJECT}" --production-branch main 2>&1)
+          CREATE_STATUS=$?
+          set -e
+
+          if [ ${CREATE_STATUS} -eq 0 ]; then
+            echo "Cloudflare Pages project created: ${CLOUDFLARE_PAGES_PROJECT}"
+          elif echo "${CREATE_OUT}" | grep -q "8000002\|already exists"; then
+            echo "Cloudflare Pages project already exists: ${CLOUDFLARE_PAGES_PROJECT}"
+          else
+            echo "Failed to ensure Cloudflare Pages project"
+            echo "${CREATE_OUT}"
+            exit ${CREATE_STATUS}
+          fi
+
+      - name: Deploy Site to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy _site --project-name ${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch ${{ github.ref_name }} --commit-dirty=true

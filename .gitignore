@@ -1,0 +1,28 @@
+.DS_Store
+*.epub
+/.obsidian
+*.pyc
+.env
+
+# LaTeX 编译产物
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+*.nav
+*.snm
+*.vrb
+*.xdv
+
+# split 目录下生成的 part 文件和主文件
+GEB_LaTeX/split/part*.tex
+GEB_LaTeX/split/GEB-main.tex
+GEB_LaTeX/split/*.pdf
