@@ -147,14 +147,17 @@ def extract_endnotes(tex: str) -> tuple[str, dict[str, str]]:
 
 def inject_footnotes(tex: str, notes: dict[str, str]) -> str:
     """
-    将 \hyperref[fn:XXX]{\textsuperscript{N}} 替换为 \footnote{...}，
-    以便 pandoc 生成 Obsidian 兼容的 [^N] 脚注。
-    先去重相邻的重复引用，再替换。
+    将 \hyperref[fn:XXX]{\textsuperscript{N}} 替换为 \footnote{...}。
+
+    策略：
+    - 先去重紧挨着的重复引用（author typo style: ref\ref\ref）
+    - 每个 label 只有第一次出现时替换为 \footnote{text}
+    - 后续出现（如数学公式中的幂次）直接删除
     """
     if not notes:
         return tex
 
-    # 1. 去除相邻重复引用：\hyperref[fn:X]{...}\hyperref[fn:X]{...} → 保留一个
+    # 1. 去除相邻重复引用：ref ref ref → ref（同 label 连续出现）
     tex = re.sub(
         r'(\\hyperref\[([^\]]+)\]\{\\textsuperscript\{[^}]*\}\})'
         r'(\s*\\hyperref\[\2\]\{\\textsuperscript\{[^}]*\}\})+',
@@ -162,14 +165,20 @@ def inject_footnotes(tex: str, notes: dict[str, str]) -> str:
         tex,
     )
 
+    # 2. 每个 label 只替换第一次，其余删除
+    used: set[str] = set()
+
     def _replace_ref(m: re.Match) -> str:
         label = m.group(1)
-        text  = notes.get(label, "")
-        if text:
+        text  = notes.get(label)
+        if text is None:
+            return m.group(0)  # 未知标签保持原样
+        if label not in used:
+            used.add(label)
             return rf"\footnote{{{text}}}"
-        return ""  # 没找到对应脚注，删除上标引用
+        else:
+            return ""  # 后续出现（数学公式等）直接删除
 
-    # 2. \hyperref[fn:XXX]{\textsuperscript{N}} → \footnote{...}
     tex = re.sub(
         r'\\hyperref\[([^\]]+)\]\{\\textsuperscript\{[^}]*\}\}',
         _replace_ref,

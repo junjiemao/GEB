@@ -1074,10 +1074,12 @@ def fix_footnote_references(text, epub_path='/tmp/GEB_packed.epub'):
         return text, 0
 
     # --- 3. 去重：跳过目标位置已存在相同标记的条目（幂等保证）---
+    # 同时检查 Fix 16 已把该位置包装成 \hyperref[fn:...]{\textsuperscript{N}} 的情况
     all_insertions = [
         (pos, marker)
         for pos, marker in all_insertions
-        if text[pos:pos + len(marker)] != marker
+        if text[pos:pos + len(marker)] != marker          # Fix 15 未处理
+        and not text[pos:pos + 14].startswith(r'\hyperref[fn:')  # Fix 16 未包裹
     ]
 
     if not all_insertions:
