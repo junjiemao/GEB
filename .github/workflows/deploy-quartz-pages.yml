@@ -35,7 +35,7 @@ jobs:
 
       - name: Copy PDF to site
         run: |
-          mkdir -p _site
+          sudo chmod -R 777 _site
           cp GEB_LaTeX/split/GEB-main.pdf _site/GEB-main.pdf
 
       - name: Ensure Cloudflare Pages Project
