@@ -33,11 +33,6 @@ jobs:
           quartz_layout: .github/quartz/quartz.layout.ts
           quartz_repo_ref: v4
 
-      - name: Copy PDF to site
-        run: |
-          sudo chmod -R 777 _site
-          cp GEB_LaTeX/split/GEB-main.pdf _site/GEB-main.pdf
-
       - name: Ensure Cloudflare Pages Project
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
