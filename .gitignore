@@ -25,4 +25,3 @@
 # split 目录下生成的 part 文件和主文件
 GEB_LaTeX/split/part*.tex
 GEB_LaTeX/split/GEB-main.tex
-GEB_LaTeX/split/*.pdf
