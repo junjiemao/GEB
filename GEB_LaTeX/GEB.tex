@@ -13,7 +13,7 @@
 ]{memoir}
 
 %% memoir 纸张尺寸（必须在字体等 usepackage 之前）
-\setstocksize{229mm}{152mm}
+\setstocksize{260mm}{185mm}   % 大16开
 \settrimmedsize{\stockheight}{\stockwidth}{*}
 \settrims{0pt}{0pt}
 
@@ -55,12 +55,12 @@
 \usepackage{unicode-math}
 
 %% ─────────────────────────────────────────────
-%%  版面：6×9 英寸书籍页边距（memoir 原生布局）
+%%  版面：大16开（185×260mm）页边距（memoir 原生布局）
 %% ─────────────────────────────────────────────
-\setlrmarginsandblock{22mm}{18mm}{*}
-\setulmarginsandblock{20mm}{22mm}{*}
-\setheaderspaces{*}{6mm}{*}
-\setheadfoot{\baselineskip}{10mm}
+\setlrmarginsandblock{25mm}{20mm}{*}
+\setulmarginsandblock{22mm}{25mm}{*}
+\setheaderspaces{*}{7mm}{*}
+\setheadfoot{\baselineskip}{12mm}
 \checkandfixthelayout
 
 %% ─────────────────────────────────────────────
@@ -111,6 +111,18 @@
 \makeoddhead {geb}{\small\itshape\rightmark}{}{\small\thepage}
 \makeheadrule {geb}{\textwidth}{0.4pt}
 \pagestyle{geb}
+\renewcommand{\chaptermark}[1]{\markboth{第\ \thechapter\ 章\enspace #1}{第\ \thechapter\ 章\enspace #1}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\enspace #1}}
+
+%% ─────────────────────────────────────────────
+%%  中文标准名称
+%% ─────────────────────────────────────────────
+\renewcommand{\contentsname}{目录}
+\renewcommand{\figurename}{图}
+\renewcommand{\tablename}{表}
+\renewcommand{\appendixname}{附录}
+\renewcommand{\bibname}{参考文献}
+\renewcommand{\indexname}{索引}
 
 %% ─────────────────────────────────────────────
 %%  段落间距与行距（memoir 内建命令）
@@ -131,6 +143,8 @@
   labelfont={bf,color=accent},
   labelsep=quad,
   width=0.88\linewidth,
+  justification=centering,
+  singlelinecheck=false,
 }
 
 %% pandocbounded：memoir 兼容版，限制图片最大宽度和高度
@@ -198,19 +212,20 @@
 %% ─────────────────────────────────────────────
 \usepackage{titletoc}
 
-%% memoir 的 \chapter* 会向 .toc 写入 \chapternumberline，
-%% titletoc 不自动定义它，需手动提供兼容定义
+%% memoir 的 chapternumberline/partnumberline 需映射到 \numberline
+%% 才能被 titletoc 识别为「有编号」条目
 \makeatletter
-\providecommand{\chapternumberline}[1]{#1\enspace}
+\renewcommand{\chapternumberline}[1]{\numberline{#1}}
+\renewcommand{\partnumberline}[1]{\numberline{#1}}
 \makeatother
 
 \titlecontents{chapter}[0em]
   {\addvspace{6pt}\bfseries\color{accent}}
-  {\contentslabel{3em}}
-  {\hspace*{-3em}}
+  {\makebox[3em][l]{\thecontentslabel}}
+  {}
   {\hfill\contentspage}
 
-\titlecontents{section}[2em]
+\titlecontents{section}[3em]
   {\addvspace{2pt}\small}
   {}
   {}
@@ -273,7 +288,7 @@
 
 %% memoir + XeLaTeX 下需手动告知 xdvipdfmx 纸张尺寸
 \AtBeginDocument{%
-  \special{papersize=185mm,260mm}%   % 大16开
+  \special{papersize=\the\paperwidth,\the\paperheight}%
 }
 
 %% ═══════════════════════════════════════════
@@ -12842,6 +12857,7 @@ swi & {$\Leftarrow$} & cut & {$\Leftarrow$} & mvl & {$\Leftarrow$} & int \\
 \phantomsection\label{fig:88}
 \phantomsection\label{fig:88}
 \phantomsection\label{fig:88}
+\phantomsection\label{fig:88}
 \begin{center}\small\textbf{图88．印符酶的三级结构}\end{center}
 
 注意在``rpu''处的向左转、在``swi''处的向右转，等等。还要注意第一段（``rpy{$\Rightarrow$}ina''）与最后一段（``swi{$\Rightarrow$}cop''）是正交的。这就是决定拴在哪里的关键。事实上，酶的三级结构中，第一段和最后一段的相对方向决定了该酶拴于何处。我们总是可以调整酶的方位，使其第一段指向右方，如果这样做了，那么最后一段就决定了酶所拴的位置，如\hyperref[fig:89]{图89}所示。
@@ -12858,6 +12874,7 @@ swi & {$\Leftarrow$} & cut & {$\Leftarrow$} & mvl & {$\Leftarrow$} & int \\
 {$\Rightarrow$} & {$\Leftarrow$} & T \\
 \end{longtable}
 
+\phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
