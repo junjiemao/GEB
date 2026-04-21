@@ -672,6 +672,228 @@ def fix_wrong_3col_widths(text):
 
 
 # ──────────────────────────────────────────────────────────
+#  Fix 13: 回退被 Fix 12 错误修改的"推导表"列宽
+#
+#  Fix 12 将所有 0.08/0.50/0.34 表改为 0.44/0.08/0.40，但推导表
+#  （步骤号|公式|规则）的中间列是实际公式，不是箭头符号，因此
+#  Fix 12 对它们的修改是错误的。
+#
+#  判断逻辑：
+#    - 若某张 0.44/0.08/0.40 表中，所有数据行的第 2 列都是简单
+#      运算符（⇔ → ← = 或全角空格等），则保留为 ARROW 表。
+#    - 否则属于 CONTENT 表，回退为 0.08/0.50/0.34。
+# ──────────────────────────────────────────────────────────
+
+# 中列为纯运算符的 pattern
+_ARROW_CELL_PAT = re.compile(
+    r'^\s*('
+    r'　*\{?\$\\(?:Left|Right|left|right)(?:right|left)?arrow\w*\$\}?　*'  # $\Leftrightarrow$ 等
+    r'|[=\-\s\u3000]*'                                                       # = 或空格
+    r')\s*$'
+)
+
+
+def _extract_col2_values(body: str) -> list:
+    """从表体中提取每行第 2 列内容（跳过结构命令行和 multi* 单元格）"""
+    values = []
+    for row in body.split('\\\\'):
+        stripped = row.strip()
+        if not stripped or stripped.startswith('\\'):
+            continue
+        cells = stripped.split('&')
+        if len(cells) < 3:
+            continue
+        col2 = cells[1].strip()
+        if 'multicolumn' in col2 or 'multirow' in col2:
+            continue
+        values.append(col2)
+    return values
+
+
+def _is_arrow_table(body: str) -> bool:
+    """所有数据行的中间列均为箭头/等号 → True（ARROW 表，保留 Fix 12 结果）"""
+    vals = _extract_col2_values(body)
+    if not vals:
+        return False
+    return all(_ARROW_CELL_PAT.match(v) for v in vals)
+
+
+_FIX13_PAT = re.compile(
+    r'(\\begin\{longtable\}\[\]\{\|)'
+    + re.escape(_FIXED_3COL)
+    + r'(\|\})'
+    + r'(.*?)'
+    + r'(\\end\{longtable\})',
+    re.DOTALL,
+)
+
+
+def fix_misidentified_tables(text):
+    """
+    将 Fix 12 错误修改的推导表（CONTENT 表）回退为 0.08/0.50/0.34 列宽。
+    ARROW 表（中列全为 ⇔/= 等运算符）保持 0.44/0.08/0.40 不变。
+    """
+    count = 0
+    result_parts = []
+    last_end = 0
+
+    for m in _FIX13_PAT.finditer(text):
+        full_body = m.group(3)
+        elf_pos = full_body.find(r'\endlastfoot')
+        body_only = full_body[elf_pos + 12:] if elf_pos >= 0 else full_body
+
+        result_parts.append(text[last_end:m.start()])
+        if _is_arrow_table(body_only):
+            # ARROW 表，保留 Fix 12 的修改
+            result_parts.append(m.group(0))
+        else:
+            # CONTENT 表，回退为 0.08/0.50/0.34
+            replacement = (
+                m.group(1)
+                + _WRONG_3COL
+                + m.group(2)
+                + m.group(3)
+                + m.group(4)
+            )
+            result_parts.append(replacement)
+            count += 1
+
+        last_end = m.end()
+
+    result_parts.append(text[last_end:])
+    return ''.join(result_parts), count
+
+
+# ──────────────────────────────────────────────────────────
+#  Fix 14: 多列窄格表溢出 → resizebox + tabular
+#
+#  pandoc 根据 EPUB CSS 生成等宽多列 longtable，列宽之和约 0.94\lw，
+#  加上 tabcolsep 后严重超出版心。修复方法：
+#    - 将 longtable → tabular（内容可在一页内容纳）
+#    - 列规格 p{X\linewidth} → c（自然宽度居中）
+#    - 外包 \resizebox{\linewidth}{!}{...} 缩放至版心宽度
+#
+#  触发条件：
+#    - ≥4 列等宽 p{X\linewidth}（X < 0.20）
+#    - 所有列宽之和 > 0.85（超过 tabcolsep 后一定溢出）
+#    - 不被 \begingroup...\endgroup 已包裹
+# ──────────────────────────────────────────────────────────
+
+_MULTICOL_NARROW_PAT = re.compile(
+    r'(?<!\{)\n?'
+    r'(\\begin\{longtable\}\[\]\{)'
+    r'(\|?)'
+    r'((?:>\\{\\\\raggedright\\\\arraybackslash\\}p\\{[0-9.]+\\\\linewidth\\} ?)+)'
+    r'(\|?)'
+    r'(\})'
+    r'(.*?)'
+    r'(\\end\{longtable\})',
+    re.DOTALL,
+)
+
+# 更简单的模式：逐段处理
+_NARROW_LTABLE = re.compile(
+    r'(\\begin\{longtable\}\[\]\{)'
+    r'(\|?)'
+    r'((?:>\\{\\\\raggedright\\\\arraybackslash\\}p\\{[0-9.]+\\\\linewidth\\}[\s]*)+)'
+    r'(\|?)'
+    r'(\})'
+    r'([\s\S]*?)'
+    r'(\\end\{longtable\})',
+)
+
+_COL_WIDTH_RE = re.compile(r'p\{([0-9.]+)\\linewidth\}')
+_RAGRIGHT_COL = re.compile(
+    r'>\\{raggedright\\arraybackslash\\}p\\{[0-9.]+\\linewidth\\}'
+)
+
+
+def fix_narrow_multicol_tables(text):
+    """
+    将等宽多列（≥4 列，总宽 > 0.85）的 longtable 转为
+    resizebox{\\linewidth}{!} + tabular，以解决列宽超出版心的问题。
+    """
+    # 匹配 longtable[\{\...spec\}]...\\end{longtable}
+    ltable_pat = re.compile(
+        r'(\\begin\{longtable\}\[\]\{(\|?))((?:>\\{\\\\?raggedright\\\\?arraybackslash\\}p\\{[0-9.]+\\\\?linewidth\\}[\\ ]*)+)(\|?\})([\s\S]*?)(\\end\{longtable\})',
+        re.DOTALL
+    )
+
+    # 改用手工分割方式，更可靠
+    result = []
+    count = 0
+    pos = 0
+    begin_marker = r'\begin{longtable}[]{|'
+    end_marker = r'\end{longtable}'
+
+    i = 0
+    while i < len(text):
+        # find next longtable
+        bt = text.find(r'\begin{longtable}', i)
+        if bt == -1:
+            result.append(text[i:])
+            break
+
+        # find matching end
+        et = text.find(end_marker, bt)
+        if et == -1:
+            result.append(text[i:])
+            break
+
+        et_end = et + len(end_marker)
+        table_src = text[bt:et_end]
+
+        # parse column spec from first line of table
+        first_line_end = table_src.find('\n')
+        spec_line = table_src[:first_line_end] if first_line_end > 0 else table_src
+
+        widths = _COL_WIDTH_RE.findall(spec_line)
+        if len(widths) >= 4:
+            total = sum(float(w) for w in widths)
+            # check if all widths equal (within 0.001)
+            all_equal = max(float(w) for w in widths) - min(float(w) for w in widths) < 0.002
+            # check not already wrapped in \begingroup (skip 24-col table)
+            pre_context = text[max(0, bt-60):bt]
+            already_wrapped = r'\begingroup' in pre_context or r'\resizebox' in pre_context
+
+            if total > 0.85 and all_equal and not already_wrapped:
+                # build new tabular spec: |c c c c c|
+                ncols = len(widths)
+                # check outer pipes
+                has_lead_pipe = '|' in spec_line.split('{', 2)[2][:3]  # after {
+                has_trail_pipe = spec_line.rstrip().endswith('|}')
+                col_spec = ('|' if has_lead_pipe else '') + ' '.join(['c'] * ncols) + ('|' if has_trail_pipe else '')
+
+                # build table body: remove \endhead and \endlastfoot lines
+                body = table_src[first_line_end + 1 : -(len(end_marker))]
+                body_lines = []
+                skip = False
+                for ln in body.split('\n'):
+                    ls = ln.strip()
+                    if ls == r'\endhead' or ls == r'\endlastfoot':
+                        continue
+                    body_lines.append(ln)
+
+                new_table = (
+                    r'\resizebox{\linewidth}{!}{\begin{tabular}{' + col_spec + '}\n'
+                    + '\n'.join(body_lines)
+                    + r'\end{tabular}}'
+                )
+
+                result.append(text[i:bt])
+                result.append(new_table)
+                count += 1
+                i = et_end
+                continue
+
+        # no replacement, keep original
+        result.append(text[i:bt + len(r'\begin{longtable}')])
+        i = bt + len(r'\begin{longtable}')
+
+    return ''.join(result), count
+
+
+# ──────────────────────────────────────────────────────────
 #  Fix 10: \section{} 章级标题 → \chapter{} / \chapter*{}
 #
 #  pandoc 将 EPUB 的 Chapter/Dialog/Preface/Part 全部转为
@@ -835,6 +1057,16 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_3col = fix_wrong_3col_widths(text)
     if verbose:
         print(f'  [12] 3列表错误宽度修正：{n_3col} 处')
+
+    # Fix 13
+    text, n_revert = fix_misidentified_tables(text)
+    if verbose:
+        print(f'  [13] CONTENT表列宽回退：{n_revert} 处')
+
+    # Fix 14
+    text, n_narrow = fix_narrow_multicol_tables(text)
+    if verbose:
+        print(f'  [14] 多列窄格表→resizebox+tabular：{n_narrow} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
