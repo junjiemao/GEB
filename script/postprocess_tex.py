@@ -1358,6 +1358,16 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     if verbose:
         print(f'  [16] 脚注双向超链接：{n_fnlinks} 处')
 
+    # Fix 17: 去除重复的 \hyperref 上标（幂等保护）
+    _dup_hyperref_pat = re.compile(
+        r'(\\hyperref\[[^\]]+\]\{\\textsuperscript\{\d+\}\}){2,}'
+    )
+    before_dedup = text.count(r'\hyperref[fn:')
+    text = _dup_hyperref_pat.sub(lambda m: m.group(1), text)
+    after_dedup = text.count(r'\hyperref[fn:')
+    if verbose and before_dedup != after_dedup:
+        print(f'  [17] 去除重复上标：{before_dedup - after_dedup} 处')
+
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
     if verbose:
