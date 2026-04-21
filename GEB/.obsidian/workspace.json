@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "00 导言 一首音乐-逻辑的奉献.md",
+                "file": "04 第二章 数学中的意义与形式.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "00 导言 一首音乐-逻辑的奉献"
+              "title": "04 第二章 数学中的意义与形式"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "00 导言 一首音乐-逻辑的奉献.md",
+                "file": "04 第二章 数学中的意义与形式.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "00 导言 一首音乐-逻辑的奉献 的反向链接列表"
+              "title": "04 第二章 数学中的意义与形式 的反向链接列表"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "00 导言 一首音乐-逻辑的奉献.md",
+                "file": "04 第二章 数学中的意义与形式.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "00 导言 一首音乐-逻辑的奉献 的出链列表"
+              "title": "04 第二章 数学中的意义与形式 的出链列表"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "00 导言 一首音乐-逻辑的奉献.md",
+                "file": "04 第二章 数学中的意义与形式.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "00 导言 一首音乐-逻辑的奉献 的大纲"
+              "title": "04 第二章 数学中的意义与形式 的大纲"
             }
           }
         ]
@@ -185,12 +185,12 @@
   },
   "active": "1db0932f48139552",
   "lastOpenFiles": [
+    "03 二部创意曲.md",
+    "00 导言 一首音乐-逻辑的奉献.md",
     "01 三部创意曲.md",
     "05 无伴奏阿基里斯奏鸣曲.md",
     "04 第二章 数学中的意义与形式.md",
-    "03 二部创意曲.md",
     "02 第一章 WU谜题.md",
-    "00 导言 一首音乐-逻辑的奉献.md",
     "20 第十章 描述的层次和计算机系统.md",
     "19 前奏曲….md",
     "18 第九章 无门与哥德尔.md",
