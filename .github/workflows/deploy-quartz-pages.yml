@@ -22,11 +22,11 @@ jobs:
       - name: Build Quartz
         uses: konstfish/quartz-build-action@v7
         env:
-          QUARTZ_BASE_URL: ${{ vars.QUARTZ_BASE_URL || 'xmatrix.github.io/golden_bough' }}
+          QUARTZ_BASE_URL: ${{ vars.QUARTZ_BASE_URL || 'xmatrix.github.io/GEB' }}
         with:
-          source: golden_bough
+          source: GEB
           destination: _site
-          page_title: ${{ vars.QUARTZ_PAGE_TITLE || 'The Golden Bough' }}
+          page_title: ${{ vars.QUARTZ_PAGE_TITLE || 'GEB' }}
           quartz_config: .github/quartz/quartz.config.ts
           quartz_layout: .github/quartz/quartz.layout.ts
           quartz_repo_ref: v4
