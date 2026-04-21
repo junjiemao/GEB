@@ -9,7 +9,7 @@ tags: [MoC]
 > *一条永恒的金带。*
 > — Douglas R. Hofstadter，1979
 
-📄 [下载 PDF 版本](https://github.com/junjiemao/GEB/blob/main/GEB_LaTeX/split/GEB-main.pdf)
+📄 可以下载更好排版的 [PDF 版本](/GEB-main.pdf)
 
 ## 导言
 

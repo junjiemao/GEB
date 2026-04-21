@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Build Quartz
         uses: konstfish/quartz-build-action@v7
@@ -30,6 +32,11 @@ jobs:
           quartz_config: .github/quartz/quartz.config.ts
           quartz_layout: .github/quartz/quartz.layout.ts
           quartz_repo_ref: v4
+
+      - name: Copy PDF to site
+        run: |
+          mkdir -p _site
+          cp GEB_LaTeX/split/GEB-main.pdf _site/GEB-main.pdf
 
       - name: Ensure Cloudflare Pages Project
         env:
