@@ -8,8 +8,8 @@ import * as Plugin from "./quartz/plugins"
  */
 const config: QuartzConfig = {
   configuration: {
-    pageTitle: "The Golden Bough",
-    pageTitleSuffix: " | 金枝",
+    pageTitle: "GEB——集异璧之大成",
+    pageTitleSuffix: " | 哥德尔、艾舍尔、巴赫——集异璧之大成",
     enableSPA: true,
     enablePopovers: true,
     analytics: null,
