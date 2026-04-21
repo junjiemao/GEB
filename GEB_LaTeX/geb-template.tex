@@ -111,7 +111,18 @@
 \makeoddhead {geb}{\small\itshape\rightmark}{}{\small\thepage}
 \makeheadrule {geb}{\textwidth}{0.4pt}
 \pagestyle{geb}
-\renewcommand{\chaptermark}[1]{\markboth{第\ \thechapter\ 章\enspace #1}{}}
+\renewcommand{\chaptermark}[1]{\markboth{第\ \thechapter\ 章\enspace #1}{第\ \thechapter\ 章\enspace #1}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\enspace #1}}
+
+%% ─────────────────────────────────────────────
+%%  中文标准名称
+%% ─────────────────────────────────────────────
+\renewcommand{\contentsname}{目录}
+\renewcommand{\figurename}{图}
+\renewcommand{\tablename}{表}
+\renewcommand{\appendixname}{附录}
+\renewcommand{\bibname}{参考文献}
+\renewcommand{\indexname}{索引}
 
 %% ─────────────────────────────────────────────
 %%  段落间距与行距（memoir 内建命令）
@@ -201,19 +212,20 @@
 %% ─────────────────────────────────────────────
 \usepackage{titletoc}
 
-%% memoir 的 \chapter* 会向 .toc 写入 \chapternumberline，
-%% titletoc 不自动定义它，需手动提供兼容定义
+%% memoir 的 chapternumberline/partnumberline 需映射到 \numberline
+%% 才能被 titletoc 识别为「有编号」条目
 \makeatletter
-\providecommand{\chapternumberline}[1]{#1\enspace}
+\renewcommand{\chapternumberline}[1]{\numberline{#1}}
+\renewcommand{\partnumberline}[1]{\numberline{#1}}
 \makeatother
 
 \titlecontents{chapter}[0em]
   {\addvspace{6pt}\bfseries\color{accent}}
-  {\contentslabel{3em}}
-  {\hspace*{-3em}}
+  {\makebox[3em][l]{\thecontentslabel}}
+  {}
   {\hfill\contentspage}
 
-\titlecontents{section}[2em]
+\titlecontents{section}[3em]
   {\addvspace{2pt}\small}
   {}
   {}
