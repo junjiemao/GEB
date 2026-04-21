@@ -1091,6 +1091,115 @@ def fix_footnote_references(text, epub_path='/tmp/GEB_packed.epub'):
     return text, len(all_insertions)
 
 
+# ──────────────────────────────────────────────────────────
+#  Fix 16: 脚注双向超链接
+#
+#  为章末注 enumerate 的每个 \item 添加 \phantomsection\label{fn:SEC-N}{}，
+#  并将正文中的 \textsuperscript{N} 替换为 \hyperref[fn:SEC-N]{\textsuperscript{N}}，
+#  实现正文引用 ↔ 章末注双向跳转。
+# ──────────────────────────────────────────────────────────
+
+_NOTE_ENUM_BLOCK_PAT = re.compile(
+    r'(\\begin\{enumerate\})(.*?)(\\end\{enumerate\})',
+    re.DOTALL,
+)
+
+def fix_footnote_hyperlinks(text):
+    """
+    Fix 16: 为章末注 enumerate 加 \\label，正文上标加 \\hyperref 跳转。
+    幂等：重复运行不会重复添加。
+    """
+    # --- 1. 构建章节边界 ---
+    sec_list = [(m.start(), m.group(1))
+                for m in _SECTION_LABEL_XHTML_PAT.finditer(text)]
+    sorted_secs = []
+    seen = set()
+    for i, (pos, name) in enumerate(sec_list):
+        if name not in seen:
+            seen.add(name)
+            end = sec_list[i + 1][0] if i + 1 < len(sec_list) else len(text)
+            sorted_secs.append((name, pos, end))
+
+    def get_sec_key(pos):
+        for name, start, end in sorted_secs:
+            if start <= pos < end:
+                return re.sub(r'\.xhtml$', '', name)
+        return None
+
+    # --- 2. 找到已经被 \hyperref 包裹的上标位置（幂等）---
+    already_wrapped = set()
+    for m in re.finditer(
+        r'\\hyperref\[[^\]]+\]\{(\\textsuperscript\{\d+\})\}', text
+    ):
+        already_wrapped.add(m.start(1))
+
+    insertions = []    # (abs_pos, str_to_insert)
+    replacements = []  # (start, end, new_str)
+
+    # --- 3. 为每个章末注 \item 添加 label ---
+    for bm in _NOTE_ENUM_BLOCK_PAT.finditer(text):
+        # 确认是章末注（前300字符含 \footnotesize）
+        pre = text[max(0, bm.start() - 350): bm.start()]
+        last_fn = pre.rfind('\\footnotesize')
+        if last_fn == -1:
+            continue
+        # 最近的 \footnotesize 后不能有另一个 \end{enumerate}（嵌套块）
+        if '\\end{enumerate}' in pre[last_fn:]:
+            continue
+
+        sec_key = get_sec_key(bm.start())
+        if not sec_key:
+            continue
+
+        items_body = bm.group(2)
+        items_start_abs = bm.start() + len(bm.group(1))  # after \begin{enumerate}
+
+        for i, item_m in enumerate(re.finditer(r'\\item ', items_body)):
+            n = i + 1
+            label = f'fn:{sec_key}-{n}'
+            abs_pos = items_start_abs + item_m.start()
+
+            # 幂等：前60字符已有 \label{fn:SEC-N} 则跳过
+            pre_item = text[max(0, abs_pos - 80): abs_pos]
+            if f'\\label{{{label}}}' in pre_item:
+                continue
+
+            insertions.append((abs_pos, f'\\phantomsection\\label{{{label}}}{{}}\n'))
+
+    # --- 4. 正文上标 → \hyperref[fn:SEC-N]{\textsuperscript{N}} ---
+    for sm in re.finditer(r'\\textsuperscript\{(\d+)\}', text):
+        if sm.start() in already_wrapped:
+            continue
+
+        # 跳过处于 enumerate 内部的上标（如 10^m 等数学上标不在章末注里，但为安全起见）
+        # 通过 sec_key 判断即可，章末注里本来没上标
+        n = sm.group(1)
+        sec_key = get_sec_key(sm.start())
+        if not sec_key:
+            continue
+
+        label = f'fn:{sec_key}-{n}'
+        replacements.append((sm.start(), sm.end(),
+                              f'\\hyperref[{label}]{{\\textsuperscript{{{n}}}}}'))
+
+    if not insertions and not replacements:
+        return text, 0
+
+    # --- 5. 从右向左应用（保持位置稳定）---
+    all_changes = (
+        [(pos, pos, ins) for pos, ins in insertions] +
+        [(s, e, r) for s, e, r in replacements]
+    )
+    all_changes.sort(key=lambda x: x[0], reverse=True)
+
+    count = 0
+    for start, end, new_txt in all_changes:
+        text = text[:start] + new_txt + text[end:]
+        count += 1
+
+    return text, count
+
+
 def fix_section_to_chapter(text):
     """
     将 \\section{} 章级标题升级为 \\chapter{} 或 \\chapter*{} 或 \\part{}。
@@ -1241,6 +1350,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_fnrefs = fix_footnote_references(text, epub_path=epub_path)
     if verbose:
         print(f'  [15] 脚注行内引用上标插入：{n_fnrefs} 处')
+
+    # Fix 16
+    text, n_fnlinks = fix_footnote_hyperlinks(text)
+    if verbose:
+        print(f'  [16] 脚注双向超链接：{n_fnlinks} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
