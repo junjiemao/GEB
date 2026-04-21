@@ -922,6 +922,175 @@ _SECTION_HEADING_PAT = re.compile(
 )
 
 
+# ──────────────────────────────────────────────────────────
+#  Fix 15: 在正文中插入脚注引用上标 \textsuperscript{N}
+#
+#  EPUB 中 duokan 格式脚注使用 <a epub:type="noteref"><img alt="注释N"/></a>
+#  作为行内标记，pandoc 丢弃了 <img> 导致正文无引用号。
+#  本函数从 EPUB 提取每个标记的文本上下文（前20字 + 后15字），
+#  在 GEB.tex 对应位置插入 \textsuperscript{N}。
+# ──────────────────────────────────────────────────────────
+
+_DUOKAN_ANCHOR_PAT = re.compile(
+    r'<a\b[^>]*class=["\']duokan-footnote["\'][^>]*>.*?</a\s*>',
+    re.DOTALL | re.IGNORECASE,
+)
+_FN_NUM_FROM_HREF_PAT = re.compile(r'href=["\']#B_(\d+)["\']')
+_FN_NUM_FROM_ALT_PAT = re.compile(r'alt=["\']注释(\d+)["\']')
+_SECTION_LABEL_XHTML_PAT = re.compile(r'\\phantomsection\\label\{([^}]+\.xhtml)\}\{\}')
+
+
+def fix_footnote_references(text, epub_path='/tmp/GEB_packed.epub'):
+    """
+    Fix 15: 在正文中插入脚注引用上标 \\textsuperscript{N}。
+
+    从 EPUB 中定位每个 duokan-footnote 内联锚点的文本位置，
+    在 GEB.tex 对应处插入 \\textsuperscript{N}，使章末注编号与正文对应。
+    """
+    epub_path = Path(epub_path)
+    if not epub_path.exists():
+        return text, 0
+
+    # --- 辅助函数 ---
+    def strip_tags(s):
+        return re.sub(r'<[^>]+>', '', s)
+
+    def to_key(s):
+        """去除空白、LaTeX 花括号、规范化引号，用于模糊比较。"""
+        s = re.sub(r'\s+', '', s)
+        s = s.replace('{', '').replace('}', '')
+        # pandoc 将 Unicode 引号转换为 LaTeX 风格：" → `` ，" → ''
+        s = s.replace('\u201c', "``").replace('\u201d', "''")
+        s = s.replace('\u2018', "`").replace('\u2019', "'")
+        return s
+
+    def norm_pos_to_orig(orig, n):
+        """
+        将 to_key(orig) 中第 n 个非跳过字符的位置映射回 orig 的索引。
+        跳过规则与 to_key 一致：所有 Unicode 空白（含 \\u3000 全角空格）及 {}。
+        """
+        count = 0
+        for i, ch in enumerate(orig):
+            if count == n:
+                return i
+            if ch not in '{}' and not ch.isspace():
+                count += 1
+        return len(orig)
+
+    # --- 1. 构建章节边界 ---
+    sec_list = []   # [(start_pos, xhtml_name)]
+    for m in _SECTION_LABEL_XHTML_PAT.finditer(text):
+        sec_list.append((m.start(), m.group(1)))
+
+    # xhtml_name -> (sec_start, sec_end)，取首次出现
+    sec_bounds = {}
+    for i, (pos, name) in enumerate(sec_list):
+        if name not in sec_bounds:
+            end = sec_list[i + 1][0] if i + 1 < len(sec_list) else len(text)
+            sec_bounds[name] = (pos, end)
+
+    # --- 2. 遍历 EPUB，收集插入点 ---
+    all_insertions = []   # [(abs_pos, marker_str)]
+    failed = []
+
+    try:
+        zf_ctx = zipfile.ZipFile(str(epub_path), 'r')
+    except Exception:
+        return text, 0
+
+    with zf_ctx as zf:
+        namelist = zf.namelist()
+        for xhtml_name, (sec_start, sec_end) in sorted(sec_bounds.items()):
+            candidates = [n for n in namelist if n.split('/')[-1] == xhtml_name]
+            if not candidates:
+                continue
+
+            content = zf.read(candidates[0]).decode('utf-8', errors='ignore')
+            if 'duokan-footnote' not in content:
+                continue
+
+            anchors = list(_DUOKAN_ANCHOR_PAT.finditer(content))
+            if not anchors:
+                continue
+
+            sec_text = text[sec_start:sec_end]
+            sec_key = to_key(sec_text)
+
+            for anchor_m in anchors:
+                fn_m = _FN_NUM_FROM_HREF_PAT.search(anchor_m.group())
+                if not fn_m:
+                    fn_m = _FN_NUM_FROM_ALT_PAT.search(anchor_m.group())
+                if not fn_m:
+                    continue
+                fn_num = fn_m.group(1)
+
+                # 提取锚点前后各 300 字节的原始 HTML，去标签后取关键字串
+                pre_raw = content[max(0, anchor_m.start() - 300): anchor_m.start()]
+                post_raw = content[anchor_m.end(): anchor_m.end() + 300]
+
+                pre_key = to_key(strip_tags(pre_raw))
+                post_key = to_key(strip_tags(post_raw))
+
+                found = False
+                for blen, alen in [(20, 15), (15, 10), (12, 8), (10, 6), (8, 5)]:
+                    before = pre_key[-blen:] if len(pre_key) >= blen else pre_key
+                    after  = post_key[:alen] if len(post_key) >= alen else post_key
+                    if not before:
+                        break
+
+                    npos = sec_key.find(before + after)
+                    if npos == -1:
+                        continue
+
+                    # 定位原始文本中"before 最后一字符"的位置，插在其后
+                    last_before_nidx = npos + len(before) - 1
+                    orig_i = norm_pos_to_orig(sec_text, last_before_nidx)
+                    abs_ins = sec_start + orig_i + 1
+
+                    marker = f'\\textsuperscript{{{fn_num}}}'
+                    all_insertions.append((abs_ins, marker))
+                    found = True
+                    break
+
+                # 最后回退：仅用 before（段末脚注后跟图/表等非文字块时 after 无法匹配）
+                if not found:
+                    before_fb = pre_key[-15:] if len(pre_key) >= 15 else pre_key
+                    if before_fb:
+                        npos = sec_key.find(before_fb)
+                        if npos != -1:
+                            # 确保 before 末尾是中文句尾标点（。！？」），避免误插中间
+                            if sec_key[npos + len(before_fb) - 1] in '。！？」』":':
+                                last_before_nidx = npos + len(before_fb) - 1
+                                orig_i = norm_pos_to_orig(sec_text, last_before_nidx)
+                                abs_ins = sec_start + orig_i + 1
+                                marker = f'\\textsuperscript{{{fn_num}}}'
+                                all_insertions.append((abs_ins, marker))
+                                found = True
+
+                if not found:
+                    failed.append((xhtml_name, fn_num))
+
+    if not all_insertions:
+        return text, 0
+
+    # --- 3. 去重：跳过目标位置已存在相同标记的条目（幂等保证）---
+    all_insertions = [
+        (pos, marker)
+        for pos, marker in all_insertions
+        if text[pos:pos + len(marker)] != marker
+    ]
+
+    if not all_insertions:
+        return text, 0
+
+    # --- 4. 从右向左应用插入（保持前面位置不变）---
+    all_insertions.sort(key=lambda x: x[0], reverse=True)
+    for pos, marker in all_insertions:
+        text = text[:pos] + marker + text[pos:]
+
+    return text, len(all_insertions)
+
+
 def fix_section_to_chapter(text):
     """
     将 \\section{} 章级标题升级为 \\chapter{} 或 \\chapter*{} 或 \\part{}。
@@ -1067,6 +1236,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_narrow = fix_narrow_multicol_tables(text)
     if verbose:
         print(f'  [14] 多列窄格表→resizebox+tabular：{n_narrow} 处')
+
+    # Fix 15
+    text, n_fnrefs = fix_footnote_references(text, epub_path=epub_path)
+    if verbose:
+        print(f'  [15] 脚注行内引用上标插入：{n_fnrefs} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
