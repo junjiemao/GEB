@@ -277,7 +277,11 @@ def fix_unicode_symbols(text):
 #  Fix 4: Tai Tham 乱码字符
 # ──────────────────────────────────────────────────────────
 def fix_tai_tham(text):
-    """替换 Tai Tham 字符（EPUB 提取 artifact）为对应汉字。"""
+    """替换已知 Tai Tham/Viet 字符：
+    - TAI_THAM_MAP 中的字符替换为对应汉字
+    - U+AA9F ꪟ → 倒置的"赫"
+    - 其余 Tai Viet（U+AA80–U+AADF）字符用 geb.ttf 渲染（{\gebfont X}）
+    """
     counts = {}
     for char in TAI_THAM_MAP:
         n = text.count(char)
@@ -293,6 +297,22 @@ def fix_tai_tham(text):
     if n_aa9f:
         counts[_AA9F] = n_aa9f
         text = text.replace(_AA9F, _AA9F_REPL)
+
+    # 其余 Tai Viet 字符（U+AA80–U+AADF）→ {\gebfont X}
+    def _wrap_taiviet(s):
+        result = []
+        i = 0
+        while i < len(s):
+            ch = s[i]
+            if 0xAA80 <= ord(ch) <= 0xAADF:
+                result.append(r'{\gebfont ' + ch + '}')
+                counts[ch] = counts.get(ch, 0) + 1
+            else:
+                result.append(ch)
+            i += 1
+        return ''.join(result)
+
+    text = _wrap_taiviet(text)
 
     total = sum(counts.values())
     return text, total, counts
@@ -1602,8 +1622,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
         print(f'  [4] Tai Tham 乱码修复：{n_taitham} 处')
         for char, cnt in taitham_detail.items():
             name = char.encode('unicode_escape').decode()
-            repl = TAI_THAM_MAP[char]
-            print(f'       {char} ({name}) → "{repl}": {cnt}')
+            if char in TAI_THAM_MAP:
+                repl = TAI_THAM_MAP[char]
+                print(f'       {char} ({name}) → "{repl}": {cnt}')
+            else:
+                print(f'       {char} ({name}) → {{\\gebfont}}: {cnt}')
 
     # Fix 5
     text, n_fig_envs = fix_figure_envs(text)
