@@ -285,6 +285,15 @@ def fix_tai_tham(text):
             counts[char] = n
     for char, replacement in TAI_THAM_MAP.items():
         text = text.replace(char, replacement)
+
+    # U+AA9F ꪟ → 倒置的"赫"（对位藏头诗首字，逻辑：音同"嗬"）
+    _AA9F = 'ꪟ'
+    _AA9F_REPL = r'\rotatebox[origin=c]{180}{赫}'
+    n_aa9f = text.count(_AA9F)
+    if n_aa9f:
+        counts[_AA9F] = n_aa9f
+        text = text.replace(_AA9F, _AA9F_REPL)
+
     total = sum(counts.values())
     return text, total, counts
 
