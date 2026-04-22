@@ -372,26 +372,58 @@ def fix_special_figure_labels(text):
     count = 0
 
     # 处理 \begin{center}...\end{center} 形式（Fix5 遗留）
-    def _replace_center(m):
+    # 先找出所有匹配，逐一检查前向上下文（re.sub 无法做变长 lookbehind）
+    def _apply_center(s):
         nonlocal count
-        num = m.group(2)
-        count += 1
-        return f'\\phantomsection\\label{{fig:{num}}}\n{m.group(1)}'
+        result = []
+        last = 0
+        for m in _LEFTOVER_CENTER_PAT.finditer(s):
+            num = m.group(2)
+            label = f'\\phantomsection\\label{{fig:{num}}}'
+            # 幂等：检查紧前面（去除空白后）是否已有该 label
+            before = s[last:m.start()].rstrip()
+            result.append(s[last:m.start()])
+            if before.endswith(label):
+                result.append(m.group(1))   # 已有，不重复插入
+            else:
+                count += 1
+                result.append(f'{label}\n{m.group(1)}')
+            last = m.end()
+        result.append(s[last:])
+        return ''.join(result)
 
-    text = _LEFTOVER_CENTER_PAT.sub(_replace_center, text)
+    text = _apply_center(text)
 
     # 处理裸文本子图说行（图33(a)/图35-① 等）
-    def _replace_bare(m):
-        nonlocal count
-        line = m.group(0)
-        num = m.group(2) or m.group(3)
-        count += 1
-        return (
-            f'\\phantomsection\\label{{fig:{num}}}\n'
-            f'{{\\small\\textbf{{{line}}}}}'
-        )
+    # 幂等：{\small\textbf{...}} 已包裹则不重复处理
+    _already_wrapped = re.compile(
+        r'^\\phantomsection\\label\{fig:\d+\}\n\{\\small\\textbf\{',
+        re.MULTILINE,
+    )
 
-    text = _BARE_SUBFIG_PAT.sub(_replace_bare, text)
+    def _apply_bare(s):
+        nonlocal count
+        result = []
+        last = 0
+        for m in _BARE_SUBFIG_PAT.finditer(s):
+            num = m.group(2) or m.group(3)
+            label = f'\\phantomsection\\label{{fig:{num}}}'
+            before = s[last:m.start()].rstrip()
+            result.append(s[last:m.start()])
+            if before.endswith(label):
+                # 已处理（已有 label），只包裹文本
+                result.append(f'{{\\small\\textbf{{{m.group(0)}}}}}')
+            else:
+                count += 1
+                result.append(
+                    f'{label}\n'
+                    f'{{\\small\\textbf{{{m.group(0)}}}}}'
+                )
+            last = m.end()
+        result.append(s[last:])
+        return ''.join(result)
+
+    text = _apply_bare(text)
     return text, count
 
 
