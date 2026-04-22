@@ -5355,9 +5355,9 @@ d""
 
 一定要注意，这些陈述不再是关于未指定的数了。第一个陈述是一个存在断言，而第二个是一个全称断言。即便用c而不是b来写它们，也还是意味着同样的事情：
 
-{$\exists$}c:(c+S0)=SS0
+$\exists c:(c+S0)=SS0$
 
-{$\forall$}c:(c+S0)=SS0
+$\forall c:(c+S0)=SS0$
 
 在量词管辖之下的变元称为一个量化变元。下面的两个公式说明了自由变元与量化变元之间的区别：
 
@@ -5390,11 +5390,11 @@ d""
 
 就像是在说``1加上1等于某某''。这是一个带变元b的谓词。它表达了数b可以具有的一个性质。如果有人用各种各样的数字去替换b，他就会得到一连串公式，其中的大部分都将表达``假理''。下面是关于开公式与句子之间的区别的另一个例子：
 
-{$\forall$}b:{$\forall$}c:(b+c)=(c+b)
+$\forall b:\forall c:(b+c)=(c+b)$
 
 当然，这个公式是一个表示加法交换律的句子。相反，
 
-{$\forall$}c:(b+c)=(c+b)
+$\forall c:(b+c)=(c+b)$
 
 却是一个开公式，因为b是自由的。它表达了未指定的数b可以具有，也可以不具有的一个性质------即，与所有的数c可交换。
 
@@ -5404,31 +5404,31 @@ d""
 
 我们从最后的一个：``6是偶数''开始。这个例句我们用更初等的概念重述出来就成了``存在一个数e，使得2乘以e等于6''。这很容易：
 
-{$\exists$}e:(SS0·e)=SSSSSS0
+$\exists e:(SS0\cdot e)=SSSSSS0$
 
 注意必须有量词。仅仅像下面这样写是绝对不行的：
 
-(SS0·e)=SSSSSS0
+$(SS0\cdot e)=SSSSSS0$
 
 这个串的解释当然既不真也不假，它只是表达了数e可以具有的一个性质。
 
 奇怪的是，因为我们知道乘法是可交换的，于是我们可以很容易地就把上式写成：
 
-{$\exists$}e:(e·SS0)=SSSSSS0
+$\exists e:(e\cdot SS0)=SSSSSS0$
 
 或者，知道相等是一个对称关系，我们换一下次序去写等式的两边：
 
-{$\exists$}e:SSSSSS0=(SS0·e)
+$\exists e:SSSSSS0=(SS0\cdot e)$
 
 现在，关于``6是偶数''的这三个翻译是完全不同的串，而且还有一件事也绝不是显然的：它们之中任何一个是否是定理，受到其它任何一个是否是定理的制约（但是-\/-p-q-\/-\/-是定理这个事实，几乎一点也不依赖下面这一事实：其``等价的''串-p-\/-q-\/-\/-得是个定理。因为，作为人，这种等价性是在我们的心里，所以我们几乎是自动地去想到解释，而不考虑公式的结构方面的性质）。
 
 我们可以很快解决句子2：``2不是一个平方数''，它的翻译几乎立刻就可以写出来：
 
-～{$\exists$}b:(b·b)=SS0
+$\lnot \exists b:(b\cdot b)=SS0$
 
 然而，我们又一次发现了歧义。如果我们选用下面这种写法将如何呢？
 
-{$\forall$}b:～(b·b)=SS0
+$\forall b:\lnot (b\cdot b)=SS0$
 
 第一种写法是说，``不存在一个数b，具有这样的性质，b的平方是2''，而第二种写法是说，``对任何数b，b的平方不是2。''再一次地，在我们看来，它们在概念上是等价的------但是对TNT来说，它们是不同的串。
 
@@ -5489,23 +5489,23 @@ SSSSSSSSSSSS0)·SSSSSSSSSSSS0)\\
 
 那么句子1：``5是素数''又怎么样呢？我们已经把它改写成了这个样子：``不存在数a和b，它们都大于1，使得5等于a乘以b''。我们可以将它稍加改变如下：``不存在数a和b，使得5等于a加上2，再乘以b加上2''。这又是一招------因为a和b被限定只能取自然数值，所以这种方法同样也是可行的。现在，``b加上2''可以翻译成(b+SS0)，但是还有一个更为简短的写法------SSb。同样，``c加上2''可以写成SSc。现在，我们的翻译非常的简洁：
 
-～{$\exists$}b:{$\exists$}c:SSSSS0=(SSb·SSc)
+$\lnot \exists b:\exists c:SSSSS0=(SSb\cdot SSc)$
 
 如果没有前面的弯号，它就是断言这样的两个自然数存在：当它们分别增加2之后，其乘积等于5。带上前面的弯号，整个陈述就被否定了，结果就成了断言：5是素数。
 
 如果我们想断言d加e加1是素数，而不说5，那么，最经济的方法是用串（d+Se）来替换代表5的那个数字：
 
-～{$\exists$}b:{$\exists$}c:(d+Se)=(SSb·SSc)
+$\lnot \exists b:\exists c:(d+Se)=(SSb\cdot SSc)$
 
 又一次，得到一个开公式，它的解释是一个既不真也不假的句子，它只是一个关于两个未指定的数d和e的断言。注意，用串（d+Se）来表示的数必然是大于d的，因为已经为d加上了一个虽然是未指定的但一定是正的数值。因此，如果我们在变元e上进行存在性的量化，我们将得到一个公式来断言：
 
 存在一个数，它大于d，并且它是素数。
 
-{$\exists$}e:～{$\exists$}b:{$\exists$}c:(d+Se)=(SSb·SSc)
+$\exists e:\lnot \exists b:\exists c:(d+Se)=(SSb\cdot SSc)$
 
 好，我们现在剩下要做的全部事情就是要断言：不管d是什么，这个性质实际上总是有的。做这件事的方法是在变元d上进行全称性的量化：
 
-{$\forall$}d:{$\exists$}e:～{$\exists$}b:{$\exists$}c:(d+Se)=(SSb·SSc)
+$\forall d:\exists e:\lnot \exists b:\exists c:(d+Se)=(SSb\cdot SSc)$
 
 这正是句子5的翻译！
 
@@ -5513,17 +5513,17 @@ SSSSSSSSSSSS0)·SSSSSSSSSSSS0)\\
 
 这样，我们就完成了六个典型数论句子的翻译练习。但是，这并不一定就使你成了一个使用TNT记号的专家。还有一些技巧需要掌握。下面的六个良构公式可以检验你对TNT记法的理解。它们的意思是什么？哪些是真的（当然，是在解释之下），哪些是假的？（提示：对付这个练习的方法是逐步向左移。首先，翻译原子；其次，想出加上一个单个的量词或一个弯号会对翻译起什么作用；然后向左移，加上另一个量词或弯号；然后再向左移，再做同样的事情。）
 
-～{$\forall$}c:{$\exists$}b:(SS0·b)=c
+$\lnot \forall c:\exists b:(SS0\cdot b)=c$
 
-{$\forall$}c:～{$\exists$}b:(SS0·b)=c
+$\forall c:\lnot \exists b:(SS0\cdot b)=c$
 
-{$\forall$}c:{$\exists$}b:～(SS0·b)=c
+$\forall c:\exists b:\lnot (SS0\cdot b)=c$
 
-～{$\exists$}b:{$\forall$}c:(SS0·b)=c
+$\lnot \exists b:\forall c:(SS0\cdot b)=c$
 
-{$\exists$}b:～{$\forall$}c:(SS0·b)=c
+$\exists b:\lnot \forall c:(SS0\cdot b)=c$
 
-{$\exists$}b:{$\forall$}c:～(SS0·b)=c
+$\exists b:\forall c:\lnot (SS0\cdot b)=c$
 
 第二个提示：或者它们中有四个为真两个为假，或者有四个为假两个为真。）
 
@@ -5647,7 +5647,7 @@ TNT的五条公理及第一组规则
 
 于是，我们将遵循一条比上述建议困难得多的路线走下去：我们将有公理和推理规则。首先，按照约定，命题演算的全部规则都被接受进TNT里来。因此，下面这个式子将是TNT的一个定理：
 
-＜S0=0$\vee$～S0=0＞
+$＜S0=0\vee \lnot S0=0＞$
 
 推导出它的过程与推导＜P$\vee$～P＞的过程是一样的。
 
@@ -5706,13 +5706,13 @@ TNT中的新规则：特称和概括
 
 注意，特称规则将允许某些包含自由变元的公式（即开公式）成为定理。举例来说，用特称，下列的串也能从公理1导出：
 
-～Sa=0
+$\lnot Sa=0$
 
-～S(c+SS0)=0
+$\lnot S(c+SS0)=0$
 
 还有另一个规则，概括规则，使我们能把全称量词放回到一些定理中去------那些定理所含的变元由于以前使用了特称规则而成为自由的了。举例来说，把概括规则作用到上面的那两个串中的第二个，我们就得到：
 
-{$\forall$}c:～S(c+SS0)=0
+$\forall c:\lnot S(c+SS0)=0$
 
 概括正好取消了特称的作用，反过来也一样。通常，概括总是用于某些中间步骤已经以各种各样的方式对开公式作了一番变换之后。下面是这条规则的严格叙述：
 
@@ -5880,7 +5880,7 @@ TNT中的新规则：特称和概括
 
 这里有一个我们能很容易地写下来的串，它概括地说出了它们作为整体时的被动意义。这个全称量化了的概述串是：
 
-{$\forall$}a:(0+a)=a
+$\forall a:(0+a)=a$
 
 用迄今为止所给出的规则，这个串还产生不出来。你若不信，可以自己试试。
 
@@ -5898,7 +5898,7 @@ TNT中的新规则：特称和概括
 
 顺带地，上述概述串的否定------
 
-～{$\forall$}a:(0+a)=a
+$\lnot \forall a:(0+a)=a$
 
 ------也不是TNT的定理。这意味着，原先的那个串在系统里是不可判定的。如果两者之一是定理，那么我们就说它是可判定的。虽然这听起来像是个神秘的术语，但一个给定的系统中的不可判定性是没有什么神秘的。它仅仅是该系统还能够扩充的一个标志。举例来说，在绝对几何学里，欧几里德的第五条公设是不可判定的。它必须作为一条特别的几何公设加进来，从而导致欧几里德几何学；或者相反，它的否定是能够加进来的，从而导致非欧几里德几何学。如果你回想一下几何学，你会记起为什么会出这种稀奇古怪的事情。这就是因为绝对几何学的四条公设没有固定住``点''和``线''这些术语的意义，从而为这些概念具有不同外延留下了余地。欧几里德几何学的点和线提供了``点''和``线''这些概念的一种外延；非欧几里德几何学的点和线则是提供另一种。然而，两千年来，使用先入为主的词``点''和``线''则使人相信那些词必须是单值的，只能有一个意义。
 
@@ -5906,7 +5906,7 @@ TNT中的新规则：特称和概括
 
 我们现在就TNT而言面临着一个类似的情况。我们曾沿用的记号使我们带上了某些成见。例如，使用符号``+''就使我们很容易地想：每个里面带有一个加号的定理都应该是在说那个已知的、熟悉的、``可感知''的、我们称为``加法''的运算的事情。因此，如果我们提出增加一个如下的``第六公理''，会让人觉得很是格格不入：
 
-～{$\forall$}a:(0+a)=a
+$\lnot \forall a:(0+a)=a$
 
 这与我们关于加法所持的观念不相适应。但这是我们迄今为止所描述的TNT的一个可能的扩充。采用它为其第六公理所得到的系统是一个一致的系统，就是说，不会同时有两个形式为x和～x的公式都是定理。然而，当你把这条``第六公理''与前面列出来的那个定理的金字塔并置在一起时，你也许会由于那个塔和这条新的公理之间的似乎不一致而感到困惑。但是，这种不一致性不像另一种（在那里x和～x二者都是定理）那么有害。事实上，这并非一个真正的不一致，因为存在有一种解释符号的方法，使每样事情结果都是顺理成章的。
 
@@ -5967,7 +5967,7 @@ X\{a\}
 
 这是归纳规则要求输入的两个定理之中的一个。另一个所要求的是金字塔的第一行，这是我们已经有了的。因此，我们可以应用归纳规则，去推演我们所想要的东西：
 
-{$\forall$}b:(0+b)=b
+$\forall b:(0+b)=b$
 
 特称和概括将允许我们把变元从b改为a，于是{$\forall$}a:(0+a)=a就不再是TNT的一个不可判定串了。
 
@@ -11185,7 +11185,7 @@ TNT-PROOF-PAIR\{a, a\textquotesingle\}
 
 这时候要紧的是要记住：表示一个性质和体现一个性质是不一样的，例如``是TNT定理数''由公式
 
-{$\exists$}a:TNT-PROOF-PAIR\{a, a\textquotesingle\}
+$\exists a:TNT-PROOF-PAIR\{a, a'\}$
 
 来表示，翻译为：``a\textquotesingle 是TNT定理数''。但我们并不担保此公式体现了这一概念，因为我们并未能担保这个性质是原始递归的------事实上我们至少会暗中怀疑它不是。（这样怀疑是合理的。``是TNT定理数''这一性质不是原始递归的，因而也就没有一个TNT公式能体现它！）相比之下，``是证明对''这个性质鉴于它的原始递归性，就既可以用上面引入的这个公式表示，也可用这个公式体现。
 
@@ -11453,13 +11453,13 @@ a\textquotesingle\}＞
 
 我希望上面的引文的讽刺意味触动你。济罗拉莫·萨彻利处理几何时的问题恰恰出在他从``什么是真什么不是真''这样一个固定见解出发，而且只打算证明他一开始就估计为真的那些内容。尽管他的方法很聪明------包括否定第五公设，从而证明以此得到的几何中的很多``荒唐''命题------但他从未意识到有可能以其它方式来想象点和线。我们现在得提防不要重蹈覆辙。我们应该尽可能公正地考察把～G作为新公理加进TNT将意味着什么。试看下列类型的新公理：
 
-{$\exists$}a:(a+a)=S0
+$\exists a:(a+a)=S0$
 
-{$\exists$}a:Sa=0
+$\exists a:Sa=0$
 
-{$\exists$}a:(a•a)=SS0
+$\exists a:(a\cdot a)=SS0$
 
-{$\exists$}a:S(a•a)=0
+$\exists a:S(a\cdot a)=0$
 
 如果人们从未考虑过引入它们，今天的数学该是什么样呢？这里的每一条都``与原先了解的数系的本质相抵触''，每一条也都提供了对全部数概念的一个深刻而又精彩的扩充------有理数、负数、无理数、虚数。这种可能性就是\textasciitilde G试图打开我们的眼界，使我们达到的地方。以往，数概念的每次扩充都要招来一片倒彩和嘘叫，尤其是把诸如``无理数''、``虚数''这类不受欢迎的新客叫做数时，你听到的叫声更是特别响亮。遵循这个传统，我们要把\textasciitilde G所揭示的那些数叫做超自然数，以表明我们确是深感其有悖于所有合乎常情的概念。
 
@@ -11485,11 +11485,11 @@ a\textquotesingle\}＞
 
 由于我们现在约定了把两个量词的解释加以扩充，这就意味着包含量词的任何一条定理也都有一个扩充了的意义，例如，交换律定理
 
-{$\forall$}a:{$\forall$}a\textquotesingle:(a+a\textquotesingle)=(a\textquotesingle+a)
+$\forall a:\forall a':(a+a')=(a'+a)$
 
 现在所讲的就是对全体广义自然数加法是可交换的------换句话说，不仅自然数的加法可交换，超自然数的加法也行。类似地，说``2不是自然数的平方''的那条TNT定理------
 
-\textasciitilde{}{$\exists$}a:(a•a)=SS0
+$\lnot \exists a:(a\cdot a)=SS0$
 
 ------现在告诉我们2同样也不是超自然数的平方。事实上，自然数所具有的性质，只要是由TNT定理给出的，超自然数也都具有。换言之，对于自然数能形式证明的东西，对超自然数也都成立。具体讲，这意味着超自然数不是我们熟悉的诸如分数、负数、复数等等的任何一种东西，最好还是把超自然数设想成比全部自然数都大的整数------无穷大的整数。要害是：尽管TNT的定理能排斥负数、有理数、无理数、复数等等，但没有办法排斥无穷大的整数：连表示``不存在无穷量''这句话的办法都没有。
 
@@ -12863,6 +12863,9 @@ swi & {$\Leftarrow$} & cut & {$\Leftarrow$} & mvl & {$\Leftarrow$} & int \\
 \phantomsection\label{fig:88}
 \phantomsection\label{fig:88}
 \phantomsection\label{fig:88}
+\phantomsection\label{fig:88}
+\phantomsection\label{fig:88}
+\phantomsection\label{fig:88}
 \begin{center}\small\textbf{图88．印符酶的三级结构}\end{center}
 
 注意在``rpu''处的向左转、在``swi''处的向右转，等等。还要注意第一段（``rpy{$\Rightarrow$}ina''）与最后一段（``swi{$\Rightarrow$}cop''）是正交的。这就是决定拴在哪里的关键。事实上，酶的三级结构中，第一段和最后一段的相对方向决定了该酶拴于何处。我们总是可以调整酶的方位，使其第一段指向右方，如果这样做了，那么最后一段就决定了酶所拴的位置，如\hyperref[fig:89]{图89}所示。
@@ -12879,6 +12882,9 @@ swi & {$\Leftarrow$} & cut & {$\Leftarrow$} & mvl & {$\Leftarrow$} & int \\
 {$\Rightarrow$} & {$\Leftarrow$} & T \\
 \end{longtable}
 
+\phantomsection\label{fig:89}
+\phantomsection\label{fig:89}
+\phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
@@ -13649,7 +13655,7 @@ $a^n+b^n=c^n$　　对$n=0$
 
 （他打开一只细长的盒子，拿出几张纸来，最上面一张上有下面的符号：
 
-{$\forall$}a:\textasciitilde Sa=0
+$\forall a:\lnot Sa=0$
 
 他把这张纸放到固定在长笛上的一个小谱架上，然后吹了起来，曲子很短。）
 
@@ -13679,7 +13685,7 @@ $a^n+b^n=c^n$　　对$n=0$
 
 {（他又拿出一张纸，挂在长笛上。纸上有下面这些符号}：
 
-\textasciitilde{}{$\exists$}a:{$\exists$}b:(SSa·SSb)=SSSSSSSSSSSSS0
+$\lnot \exists a:\exists b:(SSa\cdot SSb)=SSSSSSSSSSSSS0$
 
 螃蟹演奏时，阿基里斯盯着它。）
 
@@ -13701,7 +13707,7 @@ $a^n+b^n=c^n$　　对$n=0$
 
 {(他写道：}
 
-((SSS0·SSS0)+(SSSS0·SSSS0))=(SSSSS0·SSSSS0)
+$((SSS0\cdot SSS0)+(SSSS0\cdot SSSS0))=(SSSSS0\cdot SSSSS0)$
 
 螃蟹拿过来看了一会儿，然后放在谱架上，吹了起来。）
 
@@ -13713,7 +13719,7 @@ $a^n+b^n=c^n$　　对$n=0$
 
 {阿基里斯：}多谢。我过去从来没写过什么曲子，可我必须说，作曲这种事与我过去的想象完全不是一码事。让我再试一首。{（草草地写下了一行。）}
 
-\textasciitilde{}{$\exists$}a:{$\exists$}b:(SSa·SSb)=SSSSSSSSSSSSSS0
+$\lnot \exists a:\exists b:(SSa\cdot SSb)=SSSSSSSSSSSSSS0$
 
 {螃蟹：}嗯\ldots\ldots 这不就是把我先前的那段曲子抄了一遍吗？
 
@@ -13735,7 +13741,7 @@ $a^n+b^n=c^n$　　对$n=0$
 
 {阿基里斯：}要是我同时采纳你的两项建议，会怎么样呢？那样曲子就成了：
 
-\textasciitilde\textasciitilde{}{$\exists$}a:{$\exists$}b:(SSa·SSb)=SSSSSSSSSSSSSSSSS0
+$\lnot \lnot \exists a:\exists b:(SSa\cdot SSb)=SSSSSSSSSSSSSSSSS0$
 
 {螃蟹{（脸色一时很难看，掠过一丝不以为然的神情）}：}好了，阿基，听听下面这一课对你至关重要：决不要企图把太多的东西加到一支曲子里。总是有一个界限的，超过了它反而会弄巧成拙。这个例子就是如此。你这种把两条建议兼施并行的想法，并没有获得所期望的更多的美，恰好相反，却造成了一种不平衡，这下子把原来所有的妙处都弄没了。
 
@@ -13789,7 +13795,7 @@ $\wedge$OOa{$\forall$}\textquotesingle$\vee$～$\wedge$$\wedge$:b+cS({$\exists$}
 
 （阿基里斯写道：
 
-{$\forall$}a:{$\forall$}b:＜(a·a)=(SS0·(b·b))$\rightarrow$a=0＞
+$\forall a:\forall b:＜(a\cdot a)=(SS0\cdot (b\cdot b))\rightarrow a=0＞$
 
 随后螃蟹吹了起来。）
 
@@ -13821,7 +13827,7 @@ $\wedge$OOa{$\forall$}\textquotesingle$\vee$～$\wedge$$\wedge$:b+cS({$\exists$}
 
 （这么重复了两遍之后，这一阵子忙乱也就结束了。螃蟹得意地炫耀着它的抄件：
 
-＜((SSSSS0·SSSSS0+(SSSSS0·SSSSS0))=((SSSSSSS0·SSSSSSS0)+(S0·S0))$\wedge$～{$\exists$}b:＜{$\exists$}c:(Sc+b)=((SSSSSSS0·SSSSSSS0)+(S0·S0))$\wedge$～{$\exists$}d:＜{$\exists$}c:(Sc+b)=((SSSSSSS0·SSSSSSS0+(S0·S0))$\wedge${$\exists$}d:{$\exists$}d\textquotesingle:{$\exists$}e:{$\exists$}e\textquotesingle:＜～$\vee$＜d=e$\vee$d=e\textquotesingle＞$\wedge$＜b=((Sd·Sd)+(Sd\textquotesingle·Sd\textquotesingle))$\wedge$b=((Se·Se)+(Se\textquotesingle·Se\textquotesingle))＞＞＞＞
+$＜((SSSSS0\cdot SSSSS0+(SSSSS0\cdot SSSSS0))=((SSSSSSS0\cdot SSSSSSS0)+(S0\cdot S0))\wedge \lnot \exists b:＜\exists c:(Sc+b)=((SSSSSSS0\cdot SSSSSSS0)+(S0\cdot S0))\wedge \lnot \exists d:＜\exists c:(Sc+b)=((SSSSSSS0\cdot SSSSSSS0+(S0\cdot S0))\wedge \exists d:\exists d':\exists e:\exists e':＜\lnot \vee ＜d=e\vee d=e'＞\wedge ＜b=((Sd\cdot Sd)+(Sd'\cdot Sd'))\wedge b=((Se\cdot Se)+(Se'\cdot Se'))＞＞＞＞$
 
 随后螃蟹自己吹奏起来）
 
@@ -13841,7 +13847,7 @@ $\wedge$OOa{$\forall$}\textquotesingle$\vee$～$\wedge$$\wedge$:b+cS({$\exists$}
 
 阿基里斯写道：
 
-{$\forall$}a:{$\exists$}b:{$\exists$}C:＜～{$\exists$}d:{$\exists$}e:＜(SSd·SSe)=b$\vee$(SSd·SSe)=c＞$\wedge$(a+a)=(b+c)＞
+$\forall a:\exists b:\exists C:＜\lnot \exists d:\exists e:＜(SSd\cdot SSe)=b\vee (SSd\cdot SSe)=c＞\wedge (a+a)=(b+c)＞$
 
 螃蟹和乌龟颇感兴趣地琢磨着它。）
 
@@ -14236,7 +14242,7 @@ $r^4+s^4+t^4=u^4+v^4+w^4=x^4+y^4+z^4$\hyperref[fn:Chapter17-4]{\textsuperscript{
 
 像塔斯基那样，我们先来假定有这样一个公式------把它缩写成TRUE\{a\}。然后，所要做的事情就是使用对角线方法制造一个句子，它对自己下断语，说自己不是真的。我们完全照搬哥德尔的方法，从一个``服''号串入手：
 
-{$\exists$}a:＜\textasciitilde TRUE\{a\}$\wedge$ARITHMOQUINE\{a", a\}＞
+$\exists a:＜\lnot TRUE\{a\}\wedge ARITHMOQUINE\{a", a\}＞$
 
 把这个``服''号串的哥德尔数记作t，然后就算术{㧟}摁它，从而得到塔斯基公式T：
 

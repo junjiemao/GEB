@@ -1281,6 +1281,89 @@ def fix_illustration_links(text):
     return text, count
 
 
+def fix_tnt_formulas(text):
+    """
+    Fix 19: 将正文段落中的独立 TNT 公式行转换为 LaTeX 内联数学环境 $...$。
+
+    检测条件（同时满足）：
+      1. 前后均为空行（独立段落）
+      2. 无 CJK 字符
+      3. 无表格标记（& 或行末 \\\\）
+      4. 未已包裹在 $...$ 中
+      5. 含 TNT 公式指示符：{$\\exists$}/{$\\forall$}，
+         或 ～/\\textasciitilde + 后继符号，
+         或 · / • + = + 后继符号
+
+    转换内容：
+      {$\\exists$} → \\exists    {$\\forall$} → \\forall
+      独立 $\\cmd$ → \\cmd       ·/• → \\cdot
+      ～ (U+FF5E) → \\lnot       \\textasciitilde → \\lnot
+      \\textquotesingle → '
+
+    幂等：转换后行以 $...$ 包裹，下次运行时被 startswith('$') 检测跳过。
+    """
+    def _convert(line):
+        s = line
+        # 1. 先处理带花括号量词（避免被下面的 $\cmd$ regex 拆坏）
+        s = s.replace('{$\\exists$}', '\\exists ')
+        s = s.replace('{$\\forall$}', '\\forall ')
+        # 2. 去除独立 $\cmd$ 的外层美元号（\wedge, \vee, \rightarrow 等）
+        s = re.sub(r'\$\\([a-zA-Z]+)\$', r'\\\1 ', s)
+        # 3. 乘号点（两种 Unicode）
+        s = s.replace('\u00b7', '\\cdot ')     # U+00B7 MIDDLE DOT
+        s = s.replace('\u2022', '\\cdot ')     # U+2022 BULLET
+        # 4. 否定符（先处理带空组的形式）
+        s = s.replace('\\textasciitilde{}', '\\lnot ')
+        s = s.replace('\\textasciitilde', '\\lnot ')
+        s = s.replace('\uff5e', '\\lnot ')     # U+FF5E FULLWIDTH TILDE
+        # 5. 变量上撇（先处理带空组的形式）
+        s = s.replace('\\textquotesingle{}', "'")
+        s = s.replace('\\textquotesingle', "'")
+        # 6. 清理多余空格
+        s = re.sub(r'  +', ' ', s).strip()
+        return '$' + s + '$'
+
+    def _is_tnt(line, lines, idx):
+        stripped = line.strip()
+        if not stripped:
+            return False
+        # 已包裹
+        if stripped.startswith('$') and stripped.endswith('$'):
+            return False
+        # 前后空行
+        prev_blank = (idx == 0) or (not lines[idx - 1].strip())
+        next_blank = (idx >= len(lines) - 1) or (not lines[idx + 1].strip())
+        if not (prev_blank and next_blank):
+            return False
+        # 无 CJK
+        if re.search(r'[\u4e00-\u9fff]', stripped):
+            return False
+        # 无表格标记
+        if '&' in stripped or stripped.endswith('\\\\'):
+            return False
+        # 跳过 LaTeX 环境命令行（以 \ 开头但非 \textasciitilde/\{）
+        if (stripped.startswith('\\') and
+                not stripped.startswith('\\textasciitilde') and
+                not stripped.startswith('\\{')):
+            return False
+        # TNT 指示符
+        has_q = '{$\\exists$}' in line or '{$\\forall$}' in line
+        has_neg = (('\uff5e' in line or '\\textasciitilde' in line) and
+                   bool(re.search(r'S[0-9a-zA-Z(]', line)))
+        has_mult = (('\u00b7' in line or '\u2022' in line) and
+                    '=' in line and
+                    bool(re.search(r'S[0-9a-zA-Z(]', line)))
+        return has_q or has_neg or has_mult
+
+    lines = text.split('\n')
+    count = 0
+    for i, line in enumerate(lines):
+        if _is_tnt(line, lines, i):
+            lines[i] = _convert(line)
+            count += 1
+    return '\n'.join(lines), count
+
+
 def fix_formula_notation(text):
     """
     Fix 18: 将 GEB.tex 中混用 \\textsuperscript / ×（Unicode 乘号）/ 裸幂次 /
@@ -1480,6 +1563,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_formulas = fix_formula_notation(text)
     if verbose:
         print(f'  [18] 公式符号 → LaTeX 数学环境：{n_formulas} 处')
+
+    # Fix 19: 独立 TNT 公式行 → $...$
+    text, n_tnt = fix_tnt_formulas(text)
+    if verbose:
+        print(f'  [19] 独立 TNT 公式行 → \\$...\\$：{n_tnt} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
