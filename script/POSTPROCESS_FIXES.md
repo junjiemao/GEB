@@ -180,6 +180,16 @@
 
 ---
 
+## Fix 23 — `<p class="title">` 节标题裸文本行 → `\section{}`
+
+**函数**：`fix_ptitle_to_section`  
+**操作**：pandoc 将 EPUB 章节内的节标题 `<p class="title">文本</p>` 转为裸文本段落（无任何 LaTeX 结构命令）。本 fix 从 EPUB（ChapterXX.xhtml + Introduction.xhtml）提取所有 `<p class="title">` 内容，在 GEB.tex 中找到前后各有空行的独立文本行，若规范化后与某个节标题精确匹配，则替换为 `\section{内容}`。  
+**规范化**（GEB.tex → EPUB 纯文本）：迭代剥离 `{\gebfont X}` 包裹、LaTeX 引号 `` `` ``/`''` → `"` / `"`、`\ldots{}`/`\ldots` → `…`（含省略号后空格去除）、`------`/`---` → `——`/`—`、`\textbf{X}` → `X`。  
+**幂等**：已替换行以 `\section{` 开头（`\section` 在排除列表中），第二次运行检测为 0 处。  
+**覆盖**：466 处（462 种不同的节标题，其中部分跨章重复出现）。
+
+---
+
 ## 数学环境保护（`_protect_math` / `_restore_math`）
 
 Fix 3、Fix 18 等替换操作前调用 `_protect_math`，将所有 `$...$`、`$$...$$`、`\[...\]`、`\begin{equation}...` 替换为占位符，操作完成后恢复。确保替换不破坏已有数学公式。

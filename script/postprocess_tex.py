@@ -268,8 +268,16 @@ def fix_unicode_symbols(text):
 #  Fix 4: Tai Tham 乱码字符
 # ──────────────────────────────────────────────────────────
 def fix_tai_tham(text):
-    """将所有 Tai Viet 字符（U+AA80–U+AADF）包裹为 {\\gebfont X}，使用 geb.ttf 渲染。"""
+    """将所有 Tai Viet 字符（U+AA80–U+AADF）包裹为 {\\gebfont X}，使用 geb.ttf 渲染。
+    幂等：先剥离所有已存在的 {\\gebfont X} 嵌套包裹，再统一包裹一次。"""
     counts = {}
+
+    # Step 1: 剥离任意深度的嵌套包裹，使本函数幂等
+    _unwrap_pat = re.compile(r'\{\\gebfont ([\uAA80-\uAADF])\}')
+    prev = None
+    while prev != text:
+        prev = text
+        text = _unwrap_pat.sub(r'\1', text)
 
     def _wrap_taiviet(s):
         result = []
@@ -923,6 +931,145 @@ def fix_narrow_multicol_tables(text):
         i = bt + len(r'\begin{longtable}')
 
     return ''.join(result), count
+
+
+# ──────────────────────────────────────────────────────────
+#  Fix 23: EPUB <p class="title"> 节标题 → \section{}
+#
+#  pandoc 从 EPUB 转换 LaTeX 时，将章节内的小节标题
+#  <p class="title">词与符号</p> 处理为裸文本段落，
+#  不生成任何 \section{} 命令。
+#  本 fix 从 EPUB 提取所有 <p class="title"> 内容（仅 ChapterXX 和
+#  Introduction），在 GEB.tex 中找到对应的独立文本行（前后空行，
+#  行首无 \），替换为 \section{标题}。
+#
+#  匹配策略（规范化比较，而非字符串精确匹配）：
+#    1. EPUB 端：<p class="title">内容</p> → 去除 HTML 标签 → 纯文本
+#    2. GEB.tex 端：候选裸行 → 迭代去除 {\gebfont X} 包裹
+#                             → LaTeX 引号 `` / '' → Unicode 引号 " / "
+#    3. 两端规范化后精确匹配
+#    4. 匹配则以 \section{原始行内容} 替换（使用 GEB.tex 中已有的内容）
+#
+#  幂等：已替换的行以 \section{ 开头（含 \），不满足"行首无 \"，跳过。
+# ──────────────────────────────────────────────────────────
+
+_EPUB_PTITLE_PAT = re.compile(
+    r'<p\b[^>]+class=["\'][^"\']*\btitle\b[^"\']*["\'][^>]*>(.*?)</p>',
+    re.DOTALL | re.IGNORECASE,
+)
+_HTML_TAG_PAT = re.compile(r'<[^>]+>')
+# 匹配 {\gebfont ...}，支持一层内嵌花括号（如 {\gebfont ꪡ} 或被嵌套的版本）
+_GEBFONT_UNWRAP_PAT = re.compile(
+    r'\{\\gebfont\s+((?:[^{}]|\{[^{}]*\})*)\}'
+)
+# 匹配 \textbf{X}（X 为单个字符，Fix 21 对稀有字形的转换）
+_TEXTBF_SINGLE_PAT = re.compile(r'\\textbf\{(.)\}')
+# 匹配 \ldots 命令（带或不带 {} 后缀）
+_LDOTS_PAT = re.compile(r'\\ldots(?:\{\}|\.\.\.|(?=[^a-zA-Z]))', re.DOTALL)
+
+
+def _load_epub_title_set(epub_path):
+    """
+    从 EPUB 提取所有章节内 <p class="title"> 文本（去除 HTML 标签后的纯文本）。
+    只处理 ChapterXX.xhtml 和 Introduction.xhtml。
+    返回 set of str（Unicode 纯文本）。
+    """
+    chapter_file_re = re.compile(
+        r'(?:Chapter\d+|Introduction)\.xhtml$', re.IGNORECASE
+    )
+    titles = set()
+    with zipfile.ZipFile(str(epub_path), 'r') as z:
+        for name in z.namelist():
+            if not chapter_file_re.search(name):
+                continue
+            try:
+                content = z.read(name).decode('utf-8', errors='ignore')
+            except Exception:
+                continue
+            for m in _EPUB_PTITLE_PAT.finditer(content):
+                plain = _HTML_TAG_PAT.sub('', m.group(1)).strip()
+                if plain:
+                    titles.add(plain)
+    return titles
+
+
+def _normalize_tex_line_for_title(line):
+    """
+    将 GEB.tex 中的行规范化为 EPUB 纯文本，用于与 title 集合比较：
+      1. 迭代去除 {\\gebfont X} 包裹（处理 Fix 4 多次运行后的嵌套）
+      2. 去除残余花括号包裹的 Tai Viet 字符（{ ꪡ} → ꪡ）
+      3. 将 LaTeX 引号 `` → " 和 '' → "（恢复 pandoc quote 转换）
+      4. \\ldots{} / \\ldots → … （恢复 pandoc 省略号转换）
+      5. ------ → ——（恢复 pandoc 双破折号转换：U+2014×2 → 6 hyphens）
+      6. \\textbf{X} → X（逆 Fix 21 对稀有字形的加粗处理）
+    """
+    s = line.strip()
+    # 1. 迭代展开 {\gebfont ...}（每轮去一层，直到稳定）
+    prev = None
+    while prev != s:
+        prev = s
+        s = _GEBFONT_UNWRAP_PAT.sub(lambda m: m.group(1), s)
+    # 2. 去除残余花括号包裹的 Tai Viet 字符：{ ꪡ} → ꪡ（多次包裹后的残留）
+    s = re.sub(r'\{\s*([\uAA80-\uAADF]+)\s*\}', r'\1', s)
+    # 3. LaTeX 引号 → Unicode 引号
+    s = s.replace("``", '\u201c').replace("''", '\u201d')
+    # 4. \ldots{} / \ldots → Unicode 省略号 …
+    s = _LDOTS_PAT.sub('\u2026', s)
+    # 省略号后紧接 CJK 字符时，去除多余空格（pandoc 在 \ldots 后插入空格）
+    s = re.sub(r'\u2026\s+(?=[\u4e00-\u9fff\uff00-\uffef])', '\u2026', s)
+    # 5. pandoc em-dash 转换：--- (3 hyphens = U+2014) → U+2014
+    #    先处理 6 hyphens → ——，再处理 3 hyphens → —
+    s = s.replace('------', '\u2014\u2014')
+    s = s.replace('---', '\u2014')
+    # 6. \textbf{X} → X（Fix 21 对稀有字形的处理）
+    s = _TEXTBF_SINGLE_PAT.sub(r'\1', s)
+    return s
+
+
+def fix_ptitle_to_section(text, epub_path):
+    """
+    Fix 23: 将 EPUB <p class="title"> 对应的裸文本行替换为 \\section{}。
+    466 处节标题。
+    """
+    epub_path = Path(epub_path)
+    if not epub_path.exists():
+        return text, 0
+
+    titles = _load_epub_title_set(epub_path)
+    if not titles:
+        return text, 0
+
+    lines = text.split('\n')
+    count = 0
+    result = []
+    n = len(lines)
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # 候选条件：非空、不以 % 开头
+        # 注意：不排除以 \ 开头的行（如 \ldots 开头的标题），
+        # 但排除明确的章节命令（\section、\chapter、\begin 等）
+        if stripped and not stripped.startswith('%'):
+            # 快速排除已经是 LaTeX 结构命令的行
+            _is_latex_cmd = re.match(
+                r'\\(?:section|chapter|part|begin|end|item|label|caption|'
+                r'phantom|noindent|textbf|textit|emph|footnote|hyperref|'
+                r'ref|cite|includegraphics|pandocbounded)\b',
+                stripped
+            )
+            if not _is_latex_cmd:
+                # 前后均为空行（独立段落）
+                prev_blank = (i == 0 or lines[i - 1].strip() == '')
+                next_blank = (i == n - 1 or lines[i + 1].strip() == '')
+                if prev_blank and next_blank:
+                    normalized = _normalize_tex_line_for_title(stripped)
+                    if normalized in titles:
+                        result.append(f'\\section{{{stripped}}}')
+                        count += 1
+                        continue
+        result.append(line)
+
+    return '\n'.join(result), count
 
 
 # ──────────────────────────────────────────────────────────
@@ -1707,6 +1854,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_bold = fix_bold_braced_chars(text)
     if verbose:
         print(f'  [21] 非ASCII单字符加粗：{n_bold} 处')
+
+    # Fix 23: <p class="title"> 节标题裸文本行 → \section{}
+    text, n_sections = fix_ptitle_to_section(text, epub_path=epub_path)
+    if verbose:
+        print(f'  [23] <p class="title"> → \\section{{}}：{n_sections} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
