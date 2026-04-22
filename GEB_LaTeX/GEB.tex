@@ -7069,21 +7069,21 @@ WJJU & 　{$\Leftrightarrow$}　 & 3110 \\
 
 不过，在我们跳到结论之前，你或许会愿意看看这个同构的较高层次的全貌是什么样。这也是个很好的练习。其思想在于使给出的各个算术规则与WJU系统的每个印符规则在效果上没有差别。
 
-下面是实现的方案之一。规则中的m和k是任意的自然数，n是小于10\textsuperscript{m}的任何自然数。
+下面是实现的方案之一。规则中的m和k是任意的自然数，n是小于$10^m$的任何自然数。
 
-规则1：若有了10m+1，则还可以有10×(10m+1)。
+规则1：若有了$10^m+1$，则还可以有$10\times(10^m+1)$。
 
 例子：从第4行到第5行。这时，m=30。
 
-规则2：若有了3×10\textsuperscript{m}+n，则还可以有10\textsuperscript{m}×(3×10\textsuperscript{m}+n)+n。
+规则2：若有了$3\times10^{m}+n$，则还可以有$10^{m}\times(3\times10^{m}+n)+n$。
 
 例子：从第1行到第2行，这时m与n都是1。
 
-规则3：若有了k×10\textsuperscript{m+3}+111×10\textsuperscript{m}+n，则还可以有k×10\textsuperscript{m+1}+n。
+规则3：若有了$k\times10^{m+3}+111\times10^{m}+n$，则还可以有$k\times10^{m+1}+n$。
 
 例子：从第3行到第4行，这时m与n都是1，而k是3。
 
-规则4：若有了k×10(m+2)+n，则还可以有k×10(m)+n。
+规则4：若有了$k\times10^{m+2}+n$，则还可以有$k\times10^{m}+n$。
 
 例子：从第6行到第7行。这时，m=2，n=10，k=301。
 
@@ -8582,13 +8582,13 @@ life.
 
 {食蚁兽：}内容非常简单。溺爱儿·的·狒犸，这位专业数学家、业余律师，在读一本丢饭蠹的经典教本《算术》时，看到了这样一个方程式：
 
-2\textsuperscript{a}+2\textsuperscript{b}=2\textsuperscript{c}
+$2^a+2^b=2^c$
 
 他立刻意识到有无穷多个a、b、c能满足这个方程，于是在书的边空上写下了下面这段臭名昭著的批注：
 
 方程
 
-n\textsuperscript{a}+n\textsuperscript{b}=n\textsuperscript{c}
+$n^a+n^b=n^c$
 
 其中a、b、c及n取正整数，仅当n=2时有解（此时将有无穷多的三元组a、b、c满足这个方程）；但n＞2时没有解。我已找到了一个精彩的证明，可是不凑巧，这个证明太小了，如果写在这块边空上几乎会看不清。
 
@@ -10345,7 +10345,7 @@ PRIME?{[}N{]}=YES若N是素数，否则为NO。
 PERFECT?{[}N{]}=YES若N是完全数，否则为NO。
 
 TRIVIAL?{[}A, B, C,
-N{]}=YES若A\textsuperscript{N}+B\textsuperscript{N}=C\textsuperscript{N}
+N{]}=YES若$A^N+B^N=C^N$
 成立，否则为NO。例如：
 
 \begin{itemize}
@@ -10357,7 +10357,7 @@ N{]}=YES若A\textsuperscript{N}+B\textsuperscript{N}=C\textsuperscript{N}
 \end{itemize}
 
 PIERRE?{[}A, B,
-C{]}=YES若A\textsuperscript{N}+B\textsuperscript{N}=C\textsuperscript{N}
+C{]}=YES若$A^N+B^N=C^N$
 可以被某个大于1的N值所满足，否则为NO。例如：
 
 \begin{itemize}
@@ -10368,7 +10368,7 @@ C{]}=YES若A\textsuperscript{N}+B\textsuperscript{N}=C\textsuperscript{N}
   PIERRE?{[}1, 2, 3{]}=NO
 \end{itemize}
 
-FERMAT?{[}N{]}=YES若A\textsuperscript{N}+B\textsuperscript{N}=C\textsuperscript{N}
+FERMAT?{[}N{]}=YES若$A^N+B^N=C^N$
 可以被某一组正数A、B、C 所满足，否则为NO。例如：
 
 \begin{itemize}
@@ -10518,7 +10518,7 @@ BLOCK 0: END. & 第0块结束 \\
 
 在这里，k是该程序的索引编号，N是唯一的输入参数。例如，蓝程序\#12可以是送回其输入值的二倍的那个函数：
 
-蓝程序\{\#12\}{[}N{]}=2×N
+蓝程序\{\#12\}$[N]=2N$
 
 上述等式的意义是：左面指定的程序将给出一个返回值，这个值和人从右面的常规代数公式中算出的相等。作为另一个例子，或许第5000个蓝程序计算其输入参数的立方：
 
@@ -12861,6 +12861,8 @@ swi & {$\Leftarrow$} & cut & {$\Leftarrow$} & mvl & {$\Leftarrow$} & int \\
 \phantomsection\label{fig:88}
 \phantomsection\label{fig:88}
 \phantomsection\label{fig:88}
+\phantomsection\label{fig:88}
+\phantomsection\label{fig:88}
 \begin{center}\small\textbf{图88．印符酶的三级结构}\end{center}
 
 注意在``rpu''处的向左转、在``swi''处的向右转，等等。还要注意第一段（``rpy{$\Rightarrow$}ina''）与最后一段（``swi{$\Rightarrow$}cop''）是正交的。这就是决定拴在哪里的关键。事实上，酶的三级结构中，第一段和最后一段的相对方向决定了该酶拴于何处。我们总是可以调整酶的方位，使其第一段指向右方，如果这样做了，那么最后一段就决定了酶所拴的位置，如\hyperref[fig:89]{图89}所示。
@@ -12877,6 +12879,8 @@ swi & {$\Leftarrow$} & cut & {$\Leftarrow$} & mvl & {$\Leftarrow$} & int \\
 {$\Rightarrow$} & {$\Leftarrow$} & T \\
 \end{longtable}
 
+\phantomsection\label{fig:89}
+\phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
 \phantomsection\label{fig:89}
@@ -13492,7 +13496,7 @@ a\textquotesingle\}$\wedge$ARITHMOQUINE\{a", a\textquotesingle\}＞
 
 对这种分化思想给出另一种说明的，是下面这种与分化型自复制相似的极为简单的计算机。设想一个很短的、被一个双向开关控制的程序，程序中有一个内部参数N------一个自然数。这个程序能按两种方式运行------向上方式和向下方式。当按照向上方式运行时，它把自己复制到该机器的存储器的邻近部位，不过它的``女儿''的内部参数是原先的N加上1。当按照向下方式运行时，它不做自复制，而是计算数值
 
-(-1)\textsuperscript{N}/(2N+1)
+$(-1)^N/(2N+1)$
 
 然后把它加到前面运行过程中所得的总数上。
 
@@ -13600,7 +13604,7 @@ a\textquotesingle\}$\wedge$ARITHMOQUINE\{a", a\textquotesingle\}＞
 
 {螃蟹：}是的。好了，我接着往下说吧。衍奴玛拉在信里还证明了每个偶素数都是两个奇数之和、方程
 
-a\textsuperscript{n}+b\textsuperscript{n}=c\textsuperscript{n}　　对n=0
+$a^n+b^n=c^n$　　对$n=0$
 
 没有正整数解。
 

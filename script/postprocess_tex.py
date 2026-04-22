@@ -16,6 +16,9 @@ postprocess_tex.py — GEB.tex 后处理脚本
   4. Tai Tham 乱码字符修复
      (EPUB 提取 artifact，Tai Tham 字符实为汉字编码错误)
 
+  18. 公式符号转 LaTeX 数学环境
+     (混用 \\textsuperscript / ×（Unicode 乘号）/ 裸幂次的数学表达式 → $...$)
+
 使用方法:
   python3 postprocess_tex.py GEB.tex
   python3 postprocess_tex.py GEB.tex --dry-run   # 只统计，不写入
@@ -1278,6 +1281,67 @@ def fix_illustration_links(text):
     return text, count
 
 
+def fix_formula_notation(text):
+    """
+    Fix 18: 将 GEB.tex 中混用 \\textsuperscript / ×（Unicode 乘号）/ 裸幂次的
+    数学表达式转换为标准 LaTeX 数学环境。
+
+    幂等保护：仅当 old 在文本中且 new 不在文本中时才替换。
+    """
+    replacements = [
+        # ── Chapter 9 前言行：n < 10^m（单侧上界说明）
+        (r'n是小于10\textsuperscript{m}的任何自然数',
+         r'n是小于$10^m$的任何自然数'),
+
+        # ── Chapter 9 WJU 规则 1：裸 10m+1 与 10×(10m+1)
+        ('若有了10m+1，则还可以有10×(10m+1)',
+         r'若有了$10^m+1$，则还可以有$10\times(10^m+1)$'),
+
+        # ── Chapter 9 WJU 规则 2：\textsuperscript + × 混用
+        (r'若有了3×10\textsuperscript{m}+n，则还可以有10\textsuperscript{m}×(3×10\textsuperscript{m}+n)+n',
+         r'若有了$3\times10^{m}+n$，则还可以有$10^{m}\times(3\times10^{m}+n)+n$'),
+
+        # ── Chapter 9 WJU 规则 3：\textsuperscript + × 混用
+        (r'若有了k×10\textsuperscript{m+3}+111×10\textsuperscript{m}+n，则还可以有k×10\textsuperscript{m+1}+n',
+         r'若有了$k\times10^{m+3}+111\times10^{m}+n$，则还可以有$k\times10^{m+1}+n$'),
+
+        # ── Chapter 9 WJU 规则 4：裸 10(m+2) 和 10(m)
+        ('若有了k×10(m+2)+n，则还可以有k×10(m)+n',
+         r'若有了$k\times10^{m+2}+n$，则还可以有$k\times10^{m}+n$'),
+
+        # ── Chapter 13 BlooP：函数定义 蓝程序{#12}[N]=2×N
+        (r'\{\#12\}{[}N{]}=2×N',
+         r'\{\#12\}$[N]=2N$'),
+
+        # ── Chapter 10 费马定理检验程序（uppercase A/B/C，无 \hyperref，3 处）
+        (r'A\textsuperscript{N}+B\textsuperscript{N}=C\textsuperscript{N}',
+         r'$A^N+B^N=C^N$'),
+
+        # ── Chapter 17 分化机器：莱布尼茨求和项
+        (r'(-1)\textsuperscript{N}/(2N+1)',
+         r'$(-1)^N/(2N+1)$'),
+
+        # ── 独立行费马方程变体（先处理含"对n=0"的更长串，再处理通用串）
+        ('a\\textsuperscript{n}+b\\textsuperscript{n}=c\\textsuperscript{n}\u3000\u3000对n=0',
+         '$a^n+b^n=c^n$\u3000\u3000对$n=0$'),
+        ('a\\textsuperscript{n}+b\\textsuperscript{n}=c\\textsuperscript{n}',
+         '$a^n+b^n=c^n$'),
+
+        # ── 食蚁兽对话中的仿费马方程
+        ('2\\textsuperscript{a}+2\\textsuperscript{b}=2\\textsuperscript{c}',
+         '$2^a+2^b=2^c$'),
+        ('n\\textsuperscript{a}+n\\textsuperscript{b}=n\\textsuperscript{c}',
+         '$n^a+n^b=n^c$'),
+    ]
+    count = 0
+    for old, new in replacements:
+        if old in text and new not in text:  # 幂等保护
+            n = text.count(old)
+            text = text.replace(old, new)
+            count += n
+    return text, count
+
+
 def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     """对 GEB.tex 文本执行所有后处理，返回处理后的文本。"""
 
@@ -1367,6 +1431,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     after_dedup = text.count(r'\hyperref[fn:')
     if verbose and before_dedup != after_dedup:
         print(f'  [17] 去除重复上标：{before_dedup - after_dedup} 处')
+
+    # Fix 18: 公式符号转 LaTeX 数学环境
+    text, n_formulas = fix_formula_notation(text)
+    if verbose:
+        print(f'  [18] 公式符号 → LaTeX 数学环境：{n_formulas} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
