@@ -147,19 +147,10 @@ UNICODE_MAP = {
 }
 
 # ──────────────────────────────────────────────────────────
-#  Tai Tham 乱码字符修复
-#  这些 Tai Tham 字符是 EPUB 提取时的编码错误，实为汉字
-#  Context 分析：
-#    ꪡ (U+AAA1) × 11 → 龙  （"炸脖龙" = Jabberwock；"腌龙相" = 奇异形态）
-#    ꪞ (U+AA9E) × 1  → 哦  （"乌龟：{哦}不得呢" = "Oh, certainly not."）
-#    ꪪ (U+AAAA) × 1  → 奇  （"般得{奇}子" = Bandersnatch，赵元任译）
-#  注：如果替换不正确，可手动修改本字典或在 GEB.tex 中搜索 [TAI THAM]
+#  Tai Viet 占位字符（来自 EPUB geb.ttf 自定义字体）
+#  全部通过 {\gebfont X} 使用 geb.ttf 渲染，不做文字替换
 # ──────────────────────────────────────────────────────────
-TAI_THAM_MAP = {
-    'ꪡ':  '龙',   # U+AAA1 - 炸脖龙 (Jabberwock) × 11 处
-    'ꪞ':  '哦',   # U+AA9E - 乌龟对话开头感叹词 × 1 处
-    'ꪪ':  '奇',   # U+AAAA - 般得奇子 (Bandersnatch) × 1 处
-}
+TAI_THAM_MAP = {}   # 不再做文字替换
 
 
 # ──────────────────────────────────────────────────────────
@@ -277,43 +268,20 @@ def fix_unicode_symbols(text):
 #  Fix 4: Tai Tham 乱码字符
 # ──────────────────────────────────────────────────────────
 def fix_tai_tham(text):
-    """替换已知 Tai Tham/Viet 字符：
-    - TAI_THAM_MAP 中的字符替换为对应汉字
-    - U+AA9F ꪟ → 倒置的"赫"
-    - 其余 Tai Viet（U+AA80–U+AADF）字符用 geb.ttf 渲染（{\gebfont X}）
-    """
+    """将所有 Tai Viet 字符（U+AA80–U+AADF）包裹为 {\\gebfont X}，使用 geb.ttf 渲染。"""
     counts = {}
-    for char in TAI_THAM_MAP:
-        n = text.count(char)
-        if n:
-            counts[char] = n
-    for char, replacement in TAI_THAM_MAP.items():
-        text = text.replace(char, replacement)
 
-    # U+AA9F ꪟ → 倒置的"赫"（对位藏头诗首字，逻辑：音同"嗬"）
-    _AA9F = 'ꪟ'
-    _AA9F_REPL = r'\rotatebox[origin=c]{180}{赫}'
-    n_aa9f = text.count(_AA9F)
-    if n_aa9f:
-        counts[_AA9F] = n_aa9f
-        text = text.replace(_AA9F, _AA9F_REPL)
-
-    # 其余 Tai Viet 字符（U+AA80–U+AADF）→ {\gebfont X}
     def _wrap_taiviet(s):
         result = []
-        i = 0
-        while i < len(s):
-            ch = s[i]
+        for ch in s:
             if 0xAA80 <= ord(ch) <= 0xAADF:
                 result.append(r'{\gebfont ' + ch + '}')
                 counts[ch] = counts.get(ch, 0) + 1
             else:
                 result.append(ch)
-            i += 1
         return ''.join(result)
 
     text = _wrap_taiviet(text)
-
     total = sum(counts.values())
     return text, total, counts
 
@@ -1717,6 +1685,13 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_illus = fix_illustration_links(text)
     if verbose:
         print(f'  [11] 插图目录超链接：{n_illus} 处')
+
+    # Fix 22: 媒体路径 GEB_LaTeX/media/ → ../media/（split/ 目录下编译时需要）
+    n_media = text.count('GEB_LaTeX/media/')
+    if n_media:
+        text = text.replace('GEB_LaTeX/media/', '../media/')
+    if verbose:
+        print(f'  [22] 媒体路径修正：{n_media} 处')
 
     return text
 
