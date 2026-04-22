@@ -1480,16 +1480,24 @@ def fix_bracket_formula_images(text):
     """
     count = 0
 
+    def _half(n):
+        """将 n/2 格式化为 LaTeX 系数，偶数用整数，奇数用 x.5 小数。"""
+        return str(n // 2) if n % 2 == 0 else f'{n / 2:.1f}'
+
     def right_brace(n):
+        h = _half(n)
         return (
             r'\multirow{' + str(n) + r'}{=}'
-            r'{$\left.\rule{0pt}{' + str(n) + r'\normalbaselineskip}\right\}$}'
+            r'{$\left.\rule[-' + h + r'\normalbaselineskip]{0pt}{'
+            + str(n) + r'\normalbaselineskip}\right\}$}'
         )
 
     def left_brace(n):
+        h = _half(n)
         return (
             r'\multirow{' + str(n) + r'}{=}'
-            r'{$\left\{\rule{0pt}{' + str(n) + r'\normalbaselineskip}\right.$}'
+            r'{$\left\{\rule[-' + h + r'\normalbaselineskip]{0pt}{'
+            + str(n) + r'\normalbaselineskip}\right.$}'
         )
 
     # ① 直接嵌入的 \multirow{N}{=}{\pandocbounded{..bracket..}}
