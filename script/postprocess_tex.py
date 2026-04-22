@@ -1283,11 +1283,15 @@ def fix_illustration_links(text):
 
 def fix_formula_notation(text):
     """
-    Fix 18: 将 GEB.tex 中混用 \\textsuperscript / ×（Unicode 乘号）/ 裸幂次的
-    数学表达式转换为标准 LaTeX 数学环境。
+    Fix 18: 将 GEB.tex 中混用 \\textsuperscript / ×（Unicode 乘号）/ 裸幂次 /
+    \\hyperref 内嵌上标的数学表达式转换为标准 LaTeX 数学环境。
 
-    幂等保护：仅当 old 在文本中且 new 不在文本中时才替换。
+    幂等保护：每个 old 字符串替换后即不再出现，第二次运行时 `old in text` 为 False，
+    自然幂等，无需检查 new 是否已在文本中（旧写法 `new not in text` 有误）。
     """
+    HR3 = r'\hyperref[fn:Chapter17-3]{\textsuperscript{3}}'
+    HR4 = r'\hyperref[fn:Chapter17-4]{\textsuperscript{4}}'
+
     replacements = [
         # ── Chapter 9 前言行：n < 10^m（单侧上界说明）
         (r'n是小于10\textsuperscript{m}的任何自然数',
@@ -1309,17 +1313,57 @@ def fix_formula_notation(text):
         ('若有了k×10(m+2)+n，则还可以有k×10(m)+n',
          r'若有了$k\times10^{m+2}+n$，则还可以有$k\times10^{m}+n$'),
 
-        # ── Chapter 13 BlooP：函数定义 蓝程序{#12}[N]=2×N
-        (r'\{\#12\}{[}N{]}=2×N',
-         r'\{\#12\}$[N]=2N$'),
-
         # ── Chapter 10 费马定理检验程序（uppercase A/B/C，无 \hyperref，3 处）
         (r'A\textsuperscript{N}+B\textsuperscript{N}=C\textsuperscript{N}',
          r'$A^N+B^N=C^N$'),
 
+        # ── Chapter 10 BlooP 说明段落中的内联 3^n（3 处）
+        (r'3\textsuperscript{n}的值，这包括n次乘法。然后，你求2的3\textsuperscript{n}次方，这包括3\textsuperscript{n}次乘法。',
+         r'$3^n$的值，这包括n次乘法。然后，你求2的$3^n$次方，这包括$3^n$次乘法。'),
+
+        # ── Chapter 13 BlooP：函数定义 蓝程序{#12}[N]=2×N
+        (r'\{\#12\}{[}N{]}=2×N',
+         r'\{\#12\}$[N]=2N$'),
+
+        # ── Chapter 14 丢番图方程示例（hyperref 内嵌，两个不同脚注）
+        (r'5p\hyperref[fn:Chapter14-2]{\textsuperscript{2}}+17q\hyperref[fn:Chapter14-17]{\textsuperscript{17}}-177=0',
+         r'$5p^2+17q^{17}-177=0$\hyperref[fn:Chapter14-2]{\textsuperscript{2}}'),
+
+        # ── Chapter 14 哥德尔丢番图方程（多行，\textsuperscript 含长元组）
+        ('a\\textsuperscript{(123, 666, 111, 666)}+b\\textsuperscript{(123, 666,\n111, 666)}-c\\textsuperscript{(123, 666, 111, 666)}=0',
+         r'$a^{(123,666,111,666)}+b^{(123,666,111,666)}-c^{(123,666,111,666)}=0$'),
+
         # ── Chapter 17 分化机器：莱布尼茨求和项
         (r'(-1)\textsuperscript{N}/(2N+1)',
          r'$(-1)^N/(2N+1)$'),
+
+        # ── Chapter 17 哈代-拉玛奴衍：1729 四次方分解
+        ('635318657=134' + HR4 + '+133' + HR4 + '=158' + HR4 + '+59' + HR4,
+         r'$635318657=134^4+133^4=158^4+59^4$' + HR4),
+
+        # ── Chapter 17 立方和推广（三重等号，必须在单等号版本之前处理）
+        ('r' + HR3 + '+s' + HR3 + '=u' + HR3 + '+v' + HR3
+         + '=x' + HR3 + '+y' + HR3,
+         r'$r^3+s^3=u^3+v^3=x^3+y^3$' + HR3),
+
+        # ── Chapter 17 立方和推广（单等号）
+        ('u' + HR3 + '+v' + HR3 + '=x' + HR3 + '+y' + HR3,
+         r'$u^3+v^3=x^3+y^3$' + HR3),
+
+        # ── Chapter 17 三个立方数
+        ('u' + HR3 + '+v' + HR3 + '+w' + HR3
+         + '=x' + HR3 + '+y' + HR3 + '+z' + HR3,
+         r'$u^3+v^3+w^3=x^3+y^3+z^3$' + HR3),
+
+        # ── Chapter 17 四次方三重等号
+        ('r' + HR4 + '+s' + HR4 + '+t' + HR4
+         + '=u' + HR4 + '+v' + HR4 + '+w' + HR4
+         + '=x' + HR4 + '+y' + HR4 + '+z' + HR4,
+         r'$r^4+s^4+t^4=u^4+v^4+w^4=x^4+y^4+z^4$' + HR4),
+
+        # ── Dialog 10 阿基里斯讲费马方程（hyperref 内嵌，二次方）
+        (r'a\hyperref[fn:Dialog10-2]{\textsuperscript{2}}+b\hyperref[fn:Dialog10-2]{\textsuperscript{2}}=c\hyperref[fn:Dialog10-2]{\textsuperscript{2}}',
+         r'$a^2+b^2=c^2$\hyperref[fn:Dialog10-2]{\textsuperscript{2}}'),
 
         # ── 独立行费马方程变体（先处理含"对n=0"的更长串，再处理通用串）
         ('a\\textsuperscript{n}+b\\textsuperscript{n}=c\\textsuperscript{n}\u3000\u3000对n=0',
@@ -1335,7 +1379,7 @@ def fix_formula_notation(text):
     ]
     count = 0
     for old, new in replacements:
-        if old in text and new not in text:  # 幂等保护
+        if old in text:      # 幂等：替换后 old 不再出现，第二次自然跳过
             n = text.count(old)
             text = text.replace(old, new)
             count += n
