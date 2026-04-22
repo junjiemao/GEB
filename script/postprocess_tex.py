@@ -1469,6 +1469,68 @@ def fix_formula_notation(text):
     return text, count
 
 
+# ──────────────────────────────────────────────────────────
+#  Fix 20: 公式括号图片 → LaTeX \left.\right\} / \left\{\right. 花括号
+# ──────────────────────────────────────────────────────────
+def fix_bracket_formula_images(text):
+    r"""将 Formula-right_bracket.png / Formula-left_bracket.png 图片替换为
+    LaTeX 数学花括号命令（\left.\right\} 或 \left\{\right.），适用于各种行数。
+
+    幂等：图片路径替换后不再出现，第二次运行自然跳过。
+    """
+    count = 0
+
+    def right_brace(n):
+        return (
+            r'\multirow{' + str(n) + r'}{=}'
+            r'{$\left.\rule{0pt}{' + str(n) + r'\normalbaselineskip}\right\}$}'
+        )
+
+    def left_brace(n):
+        return (
+            r'\multirow{' + str(n) + r'}{=}'
+            r'{$\left\{\rule{0pt}{' + str(n) + r'\normalbaselineskip}\right.$}'
+        )
+
+    # ① 直接嵌入的 \multirow{N}{=}{\pandocbounded{..bracket..}}
+    DIRECT_PAT = re.compile(
+        r'\\multirow\{(\d+)\}\{=\}\{'
+        r'\\pandocbounded\{\\includegraphics\[keepaspectratio\]'
+        r'\{[^}]*Formula-(right|left)_bracket[^}]*\.png\}\}'
+        r'\}'
+    )
+
+    def _replace_direct(m):
+        nonlocal count
+        n = int(m.group(1))
+        side = m.group(2)
+        count += 1
+        return right_brace(n) if side == 'right' else left_brace(n)
+
+    text = DIRECT_PAT.sub(_replace_direct, text)
+
+    # ② minipage 包裹的情形（仅出现于 longtable 中的 F(n)/M(n) 公式）
+    MINI_PAT = re.compile(
+        r'\\multirow\{(\d+)\}\{=\}'
+        r'\{\\begin\{minipage\}[^\n]*\n\s*'
+        r'\\pandocbounded\{\\includegraphics\[keepaspectratio\]'
+        r'\{[^}]*Formula-(right|left)_bracket[^}]*\.png\}\}'
+        r'\s*\n\s*\\end\{minipage\}\}',
+        re.DOTALL
+    )
+
+    def _replace_mini(m):
+        nonlocal count
+        n = int(m.group(1))
+        side = m.group(2)
+        count += 1
+        return right_brace(n) if side == 'right' else left_brace(n)
+
+    text = MINI_PAT.sub(_replace_mini, text)
+
+    return text, count
+
+
 def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     """对 GEB.tex 文本执行所有后处理，返回处理后的文本。"""
 
@@ -1568,6 +1630,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_tnt = fix_tnt_formulas(text)
     if verbose:
         print(f'  [19] 独立 TNT 公式行 → \\$...\\$：{n_tnt} 处')
+
+    # Fix 20: 公式括号图片 → LaTeX 花括号
+    text, n_brackets = fix_bracket_formula_images(text)
+    if verbose:
+        print(f'  [20] 括号图片 → LaTeX 花括号：{n_brackets} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
