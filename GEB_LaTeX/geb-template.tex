@@ -26,6 +26,13 @@
 % ※（U+203B）Georgia 无此字符，强制用 CJK 字体渲染
 \xeCJKDeclareCharClass{CJK}{"203B}
 
+% geb.ttf：EPUB 自定义字体，含 Tai Viet 占位字形（U+AA9E–U+AAAF）
+% 以及 U+31CF、U+39DF 等特殊字形
+\newfontfamily\gebfont{geb.ttf}[Path=fonts/]
+\usepackage{ucharclasses}
+\setTransitionTo{TaiViet}{\begingroup\gebfont}
+\setTransitionFrom{TaiViet}{\endgroup}
+
 % 中文正文：思源宋体（Noto Serif CJK SC）
 \setCJKmainfont[
   BoldFont    = {Noto Serif CJK SC SemiBold},
