@@ -1548,6 +1548,33 @@ def fix_bracket_formula_images(text):
     return text, count
 
 
+# ── Fix 21: {单个非ASCII字符} → \textbf{...} ─────────────────────────────────
+_BOLD_BRACED_PAT = re.compile(
+    # 分支1: \命令（含可选参数）后跟零或多个 {...} 参数，再跟 {非ASCII单字} → 跳过
+    r'\\[A-Za-z@*]+(?:\[[^\]]*\])*(?:\{[^{}]*\})*\{[^\x00-\x7F]\}'
+    # 分支2: 裸 {非ASCII单字} → 替换为 \textbf{...}
+    r'|(\{([^\x00-\x7F])\})'
+)
+
+
+def fix_bold_braced_chars(text):
+    """Fix 21: 将单独的 {X}（X 为单个非ASCII字符）替换为 \\textbf{X}。
+
+    幂等：\\textbf{X} 已存在时由分支1跳过；\\cmd{X} 形式也跳过。
+    """
+    count = 0
+
+    def _replace(m):
+        nonlocal count
+        if m.group(1) is not None:   # 分支2命中：裸 {X}
+            count += 1
+            return r'\textbf{' + m.group(2) + '}'
+        return m.group(0)            # 分支1命中：\cmd{X}，保留原样
+
+    text = _BOLD_BRACED_PAT.sub(_replace, text)
+    return text, count
+
+
 def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     """对 GEB.tex 文本执行所有后处理，返回处理后的文本。"""
 
@@ -1652,6 +1679,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_brackets = fix_bracket_formula_images(text)
     if verbose:
         print(f'  [20] 括号图片 → LaTeX 花括号：{n_brackets} 处')
+
+    # Fix 21: {非ASCII单字符} → \textbf{...}
+    text, n_bold = fix_bold_braced_chars(text)
+    if verbose:
+        print(f'  [21] 非ASCII单字符加粗：{n_bold} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
