@@ -2046,6 +2046,58 @@ def fix_bold_braced_chars(text):
     return text, count
 
 
+# ──────────────────────────────────────────────────────────
+#  Fix 28: 公式图片 PNG → LaTeX 数学/排版代码
+#
+#  EPUB 中部分复杂公式以 PNG 图片嵌入（Formula01.png …）。
+#  本 fix 将已知公式图片替换为等价 LaTeX 代码，同时保留
+#  原有的 \begin{center}...\end{center} 包裹（以及 \label
+#  或 \phantomsection 行，若存在于同一 center 块中）。
+#
+#  替换表 FORMULA_REPLACEMENTS 以 PNG 文件名为键，值为用于
+#  替换 \pandocbounded{...} 整行的 LaTeX 片段。
+#  策略：仅替换 \pandocbounded{...Formula##.png...} 这一行，
+#  外层 center 环境保持不变。
+#
+#  幂等：若该行已不含 \pandocbounded，则跳过。
+# ──────────────────────────────────────────────────────────
+
+# 每个条目：'FormulaXX.png' → 替换掉 \pandocbounded{...} 整行的 LaTeX
+FORMULA_REPLACEMENTS = {
+    'Formula01.png': (
+        r'$\begin{array}{r}'  '\n'
+        r'  12 \\'            '\n'
+        r'  \times 12 \\'    '\n'
+        r'  \hline'           '\n'
+        r'  24 \\'            '\n'
+        r'  12\phantom{0} \\' '\n'
+        r'  \hline'           '\n'
+        r'  144'              '\n'
+        r'\end{array}$'
+    ),
+}
+
+_FORMULA_PNG_LINE = re.compile(
+    r'\\pandocbounded\{\\includegraphics\[keepaspectratio\]\{[^}]*/Images/(Formula\d+\.png)\}\}'
+)
+
+
+def fix_formula_images(text):
+    """Fix 28: 将已知公式 PNG 行替换为等价 LaTeX 代码。"""
+    count = 0
+
+    def _replace_line(m):
+        nonlocal count
+        fname = m.group(1)
+        if fname in FORMULA_REPLACEMENTS:
+            count += 1
+            return FORMULA_REPLACEMENTS[fname]
+        return m.group(0)
+
+    text = _FORMULA_PNG_LINE.sub(_replace_line, text)
+    return text, count
+
+
 def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     """对 GEB.tex 文本执行所有后处理，返回处理后的文本。"""
 
@@ -2173,6 +2225,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_bold = fix_bold_braced_chars(text)
     if verbose:
         print(f'  [21] 非ASCII单字符加粗：{n_bold} 处')
+
+    # Fix 28: 公式 PNG → LaTeX 数学/排版代码
+    text, n_formula_imgs = fix_formula_images(text)
+    if verbose:
+        print(f'  [28] 公式图片 PNG → LaTeX：{n_formula_imgs} 处')
 
     # Fix 23: <p class="title"> 节标题裸文本行 → \section{}
     text, n_sections = fix_ptitle_to_section(text, epub_path=epub_path)
