@@ -2111,10 +2111,49 @@ def fix_indentfirst_preamble(text):
     return text, 0
 
 
-def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
+def fix_sync_preamble_from_template(text, template_path):
+    """Fix 30: 从 geb-template.tex 同步 preamble 到 GEB.tex。
+
+    模板 preamble（\\begin{document} 之前）不含 pandoc 变量，可直接
+    替换 GEB.tex 中的旧 preamble，从而让模板修改无需重跑 pandoc 即可生效。
+    """
+    if not template_path:
+        return text, 0
+    template_path = Path(template_path)
+    if not template_path.exists():
+        return text, 0
+
+    marker = r'\begin{document}'
+    tmpl = template_path.read_text(encoding='utf-8')
+    t_pos = tmpl.find(marker)
+    if t_pos == -1:
+        return text, 0
+
+    # 模板 preamble：\begin{document} 之前的全部内容
+    tmpl_preamble = tmpl[:t_pos]
+
+    # GEB.tex preamble：\begin{document} 之前的全部内容
+    g_pos = text.find(marker)
+    if g_pos == -1:
+        return text, 0
+
+    old_preamble = text[:g_pos]
+    if old_preamble == tmpl_preamble:
+        return text, 0   # 已同步，无需更改
+
+    return tmpl_preamble + text[g_pos:], 1
+
+
+def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub',
+                template_path=None):
     """对 GEB.tex 文本执行所有后处理，返回处理后的文本。"""
 
-    # Fix 29: preamble 注入 indentfirst
+    # Fix 30: 从模板同步 preamble（优先级最高，在其他 preamble 修复之前）
+    text, n_tmpl = fix_sync_preamble_from_template(text, template_path)
+    if verbose:
+        print(f'  [30] 模板 preamble 同步：{n_tmpl} 处')
+
+    # Fix 29: preamble 注入 indentfirst（模板已含时幂等跳过）
     text, n_indent = fix_indentfirst_preamble(text)
     if verbose:
         print(f'  [29] indentfirst preamble 注入：{n_indent} 处')
@@ -2310,8 +2349,15 @@ def main():
     text = input_path.read_text(encoding='utf-8')
     original_len = len(text)
 
+    # 自动检测同目录下的 geb-template.tex（Fix 30 preamble 同步）
+    auto_template = input_path.parent / 'geb-template.tex'
+    template_path = str(auto_template) if auto_template.exists() else None
+    if template_path and not args.quiet:
+        print(f'模板：{template_path}')
+
     print('后处理中...')
-    result = postprocess(text, verbose=not args.quiet, epub_path=args.epub)
+    result = postprocess(text, verbose=not args.quiet, epub_path=args.epub,
+                         template_path=template_path)
 
     if args.dry_run:
         print(f'\n[dry-run] 未写入文件（原文 {original_len} 字符 → 后处理 {len(result)} 字符）')
