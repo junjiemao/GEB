@@ -15,7 +15,7 @@ XELATEX_OPTS="-interaction=nonstopmode -file-line-error -output-directory=split"
 
 # ── 选择要编译的批次 ──────────────────────────────────────────
 if [[ $# -eq 0 ]]; then
-  PARTS=(part01 part02 part03 part04 part05 part06 part07)
+  PARTS=(part01 part02 part03 part04 part05 part06)
 else
   PARTS=()
   for n in "$@"; do PARTS+=("part$n"); done

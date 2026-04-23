@@ -72,14 +72,41 @@ local function rawblock(s)
 end
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- 工具：判断 UTF-8 字符串是否全为 Tai Viet 字符（U+AA80–U+AADF）
+-- UTF-8 编码：U+AA80–U+AADF → EA AA [80-9F]（每字 3 字节）
+-- ─────────────────────────────────────────────────────────────────────────────
+local function is_pure_taiviet(s)
+  if #s == 0 or #s % 3 ~= 0 then return false end
+  for i = 1, #s, 3 do
+    local b1 = string.byte(s, i)
+    local b2 = string.byte(s, i + 1)
+    local b3 = string.byte(s, i + 2)
+    if b1 ~= 0xEA or b2 ~= 0xAA or b3 < 0x80 or b3 > 0x9F then
+      return false
+    end
+  end
+  return true
+end
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Span（行内）过滤器
 -- ─────────────────────────────────────────────────────────────────────────────
 function Span(el)
   local cls = el.classes
 
-  -- rare：geb.ttf 特殊字形
-  if has_class(cls, 'rare') then
-    return { raw('\\gebfont{'), table.unpack(el.content), raw('}') }
+  -- rare：仅对纯 Tai Viet 字符（U+AA80–U+AADF）包裹 {\gebfont ...}
+  -- 其他字符（⇔ ∀ ∃ 等逻辑符号、普通 CJK 等）直接透传，
+  -- 由 postprocess_tex.py Fix 3/Fix 4 分别转换为 $\math_cmd$ / {\gebfont X}
+  -- 这样可避免：
+  --   1. 将逻辑符号包入 geb.ttf（geb.ttf 不含这些字形 → 空白）
+  --   2. 双重嵌套 <span class="rare"> 产生 \gebfont{\gebfont{} 大括号不平衡
+  if has_class(cls, 'rare') or has_class(cls, 'rare1') then
+    local text = pandoc.utils.stringify(el)
+    if is_pure_taiviet(text) then
+      return { raw('{\\gebfont '), table.unpack(el.content), raw('}') }
+    else
+      return el.content  -- 透传
+    end
   end
 
   -- 对话发言者名称（黑体加粗）

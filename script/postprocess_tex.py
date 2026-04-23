@@ -1073,6 +1073,79 @@ def fix_ptitle_to_section(text, epub_path):
 
 
 # ──────────────────────────────────────────────────────────
+#  Fix 24: 清理错误的 \gebfont{非TaiViet内容} 用法
+#
+#  Lua filter 旧版将 <span class="rare"> 全部包裹为 \gebfont{...}，
+#  但 geb.ttf 只含 Tai Viet 字形（U+AA80–U+AADF），其他字符
+#  （⇔ ∀ ∃ 等逻辑符号、普通 CJK 字符）被包入 \gebfont{} 后无法
+#  渲染（空白）。同时双重嵌套 <span class="rare"> 会产生
+#  \gebfont{\gebfont{} 大括号不平衡，导致此后整段文本落入
+#  geb.ttf 字体上下文。
+#
+#  本 fix 处理以下模式（在 Fix 3/Fix 4 之前运行）：
+#    1. \gebfont{\gebfont{}}  → 透传内容（去除双重包裹）
+#    2. \gebfont{\gebfont{}   → 删除（不平衡残留，内容已丢失）
+#    3. \gebfont{X}           → {\gebfont X}（Tai Viet）或 X（其他）
+#
+#  幂等：清理后不再含 \gebfont{ 开头的旧格式（Fix 4 统一输出
+#        {\gebfont X} 格式），第二次运行不匹配。
+# ──────────────────────────────────────────────────────────
+
+# Tai Viet 字符范围 U+AA80–U+AADF
+_TAIVIET_RE = re.compile(r'[\uAA80-\uAADF]')
+
+def _is_taiviet_only(s):
+    """判断字符串是否只含 Tai Viet 字符（U+AA80–U+AADF）。"""
+    return bool(s) and all(0xAA80 <= ord(c) <= 0xAADF for c in s)
+
+
+def fix_gebfont_cleanup(text):
+    r"""
+    Fix 24: 清理旧 Lua filter 产生的错误 \gebfont{...} 用法。
+
+    处理：
+      - \gebfont{\gebfont{}} → {\gebfont X}（或去除外层重复包裹）
+      - \gebfont{\gebfont{}  → 删除（大括号不平衡的空残留）
+      - \gebfont{X}          → {\gebfont X}（X 为 Tai Viet 字符时保留）
+                            → X（X 为其他字符时，让 Fix 3/Fix 4 处理）
+    """
+    count = 0
+
+    # 1. 修复不平衡的 \gebfont{\gebfont{} （两开一关，内容丢失）
+    #    这是双重嵌套 <span class="rare"> 产生的 artifact
+    unbalanced_pat = re.compile(r'\\gebfont\{\\gebfont\{\}')
+    n = len(unbalanced_pat.findall(text))
+    if n:
+        text = unbalanced_pat.sub('', text)
+        count += n
+
+    # 2. 修复 \gebfont{\gebfont{X}} → {\gebfont X}（双重包裹）
+    #    先展开外层，再由后续逻辑处理
+    double_pat = re.compile(r'\\gebfont\{\\gebfont\{([\uAA80-\uAADF])\}\}')
+    n = len(double_pat.findall(text))
+    if n:
+        text = double_pat.sub(r'{\\gebfont \1}', text)
+        count += n
+
+    # 3. 将 \gebfont{X} 形式（Lua filter 旧格式，无外部 {}）统一为：
+    #    - Tai Viet 字符 → {\gebfont X}（和 Fix 4 输出格式一致）
+    #    - 其他内容      → 直接保留内容（交 Fix 3/Fix 4 处理）
+    old_fmt_pat = re.compile(r'\\gebfont\{((?:[^{}]|\{[^{}]*\})+)\}')
+
+    def _convert(m):
+        nonlocal count
+        inner = m.group(1)
+        count += 1
+        if _is_taiviet_only(inner):
+            return '{\\gebfont ' + inner + '}'
+        else:
+            return inner  # 透传：Fix 3 处理逻辑符号，Fix 4 处理 Tai Viet
+
+    text = old_fmt_pat.sub(_convert, text)
+    return text, count
+
+
+# ──────────────────────────────────────────────────────────
 #  Fix 10: \section{} 章级标题 → \chapter{} / \chapter*{}
 #
 #  pandoc 将 EPUB 的 Chapter/Dialog/Preface/Part 全部转为
@@ -1755,6 +1828,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     if verbose:
         print(f'  [2] 图说居中：{n_captions} 处')
 
+    # Fix 24（需在 Fix 3/Fix 4 之前运行，清理旧 Lua filter 遗留的 \gebfont{...}）
+    text, n_gebfont = fix_gebfont_cleanup(text)
+    if verbose:
+        print(f'  [24] \\gebfont{{}} 用法清理（字体误包裹/不平衡）：{n_gebfont} 处')
+
     # Fix 3
     text, n_unicode, unicode_detail = fix_unicode_symbols(text)
     if verbose:
@@ -1794,6 +1872,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_notes = fix_empty_note_blocks(text, epub_path=epub_path)
     if verbose:
         print(f'  [8] 章末注填充（来自 EPUB）：{n_notes} 处')
+
+    # Fix 4b: Fix 8 从 EPUB 插入的脚注内容可能含裸 Tai Viet 字符，需再次包裹
+    text, n_taitham2, _ = fix_tai_tham(text)
+    if verbose and n_taitham2:
+        print(f'  [4b] Tai Viet 补充包裹（章末注插入后）：{n_taitham2} 处')
 
     # Fix 9
     text, n_tables = fix_longtable_columns(text)
