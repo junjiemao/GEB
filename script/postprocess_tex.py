@@ -1186,6 +1186,114 @@ def fix_image_subtitles(text, epub_path):
 
 
 # ──────────────────────────────────────────────────────────
+#  Fix 26: EPUB <p class="dialog_guided"> 段落 → dialogguide 环境
+#  Fix 27: EPUB <p class="quote_text">    段落 → fsquote    环境
+#
+#  pandoc 从 EPUB 转换 LaTeX 时，<p class="..."> 中的 CSS class
+#  信息会丢失，段落变为裸文本行。本 fix 从 EPUB 提取 fingerprint
+#  （段落前 15 个字符），在 GEB.tex 中匹配对应的裸段落，包裹进
+#  指定的 LaTeX 环境。
+#  幂等：已包裹的段落（前一行为 \begin{env}）直接跳过。
+# ──────────────────────────────────────────────────────────
+
+_HTML_INLINE_PAT = re.compile(r'<[^>]+>')   # 已在上方定义，此处作局部引用
+
+
+def _epub_para_fps(epub_path, css_class, fp_len=15):
+    """
+    从 EPUB 所有 xhtml 文件中提取 <p class="css_class"> 的文本指纹。
+    指纹 = 去除 HTML 标签、去除首尾空白后的前 fp_len 个字符。
+    返回 set of str。
+    """
+    class_pat = re.compile(
+        r'<p\b[^>]+class=["\'][^"\']*\b' + re.escape(css_class) + r'\b[^"\']*["\'][^>]*>(.*?)</p>',
+        re.DOTALL | re.IGNORECASE,
+    )
+    fps = set()
+    try:
+        with zipfile.ZipFile(str(epub_path), 'r') as z:
+            for name in z.namelist():
+                if not (name.endswith('.xhtml') or name.endswith('.html')):
+                    continue
+                try:
+                    content = z.read(name).decode('utf-8', errors='ignore')
+                except Exception:
+                    continue
+                for m in class_pat.finditer(content):
+                    plain = _HTML_TAG_PAT.sub('', m.group(1)).strip()
+                    if len(plain) >= 4:
+                        fps.add(plain[:fp_len])
+    except Exception:
+        pass
+    return fps
+
+
+def _wrap_epub_class_paras(text, epub_path, css_class, env_name):
+    """
+    Fix 26/27 通用实现：将匹配 css_class 的裸段落包裹进 LaTeX 环境 env_name。
+    条件：
+      - 非空行
+      - 不以 \\ 或 % 开头（尚未有 LaTeX 命令）
+      - 行内容以 fingerprint 开头
+      - 前一非空行不是 \\begin{env_name}（幂等保护）
+    返回 (新文本, 替换计数)。
+    """
+    fps = _epub_para_fps(epub_path, css_class)
+    if not fps:
+        return text, 0
+
+    begin_tok = f'\\begin{{{env_name}}}'
+    end_tok   = f'\\end{{{env_name}}}'
+
+    lines  = text.split('\n')
+    result = []
+    count  = 0
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+
+        # 幂等：已在  env 内，直接原样输出
+        if stripped.startswith(begin_tok) or stripped.startswith(end_tok):
+            result.append(line)
+            continue
+
+        if stripped and not stripped.startswith('\\') and not stripped.startswith('%'):
+            # 前一非空行是 \begin{env}? → 已包裹，跳过
+            prev_nonempty = next(
+                (result[j] for j in range(len(result) - 1, -1, -1)
+                 if result[j].strip()),
+                ''
+            )
+            if prev_nonempty.strip() == begin_tok:
+                result.append(line)
+                continue
+
+            for fp in fps:
+                if stripped.startswith(fp):
+                    result.append(begin_tok)
+                    result.append(line)
+                    result.append(end_tok)
+                    count += 1
+                    break
+            else:
+                result.append(line)
+        else:
+            result.append(line)
+
+    return '\n'.join(result), count
+
+
+def fix_dialog_guided(text, epub_path='/tmp/GEB_packed.epub'):
+    """Fix 26: dialog_guided 段落 → \\begin{dialogguide}...\\end{dialogguide}"""
+    return _wrap_epub_class_paras(text, epub_path, 'dialog_guided', 'dialogguide')
+
+
+def fix_quote_text(text, epub_path='/tmp/GEB_packed.epub'):
+    """Fix 27: quote_text 段落 → \\begin{fsquote}...\\end{fsquote}"""
+    return _wrap_epub_class_paras(text, epub_path, 'quote_text', 'fsquote')
+
+
+# ──────────────────────────────────────────────────────────
 #  Fix 24: 清理错误的 \gebfont{非TaiViet内容} 用法
 #
 #  Lua filter 旧版将 <span class="rare"> 全部包裹为 \gebfont{...}，
@@ -2070,6 +2178,16 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     text, n_sections = fix_ptitle_to_section(text, epub_path=epub_path)
     if verbose:
         print(f'  [23] <p class="title"> → \\section{{}}：{n_sections} 处')
+
+    # Fix 26: dialog_guided → dialogguide 环境
+    text, n_dg = fix_dialog_guided(text, epub_path=epub_path)
+    if verbose:
+        print(f'  [26] dialog_guided → dialogguide 环境：{n_dg} 处')
+
+    # Fix 27: quote_text → fsquote 环境
+    text, n_qt = fix_quote_text(text, epub_path=epub_path)
+    if verbose:
+        print(f'  [27] quote_text → fsquote 环境：{n_qt} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
