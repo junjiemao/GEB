@@ -1,0 +1,411 @@
+%% GEB 精排模板 ── XeLaTeX
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+
+%% ─────────────────────────────────────────────
+%%  文档类：memoir（精排书籍首选）
+%% ─────────────────────────────────────────────
+\documentclass[
+  12pt,
+  twoside,
+  openright,
+  oldfontcommands,
+]{memoir}
+
+%% memoir 纸张尺寸（必须在字体等 usepackage 之前）
+\setstocksize{260mm}{185mm}   % 大16开
+\settrimmedsize{\stockheight}{\stockwidth}{*}
+\settrims{0pt}{0pt}
+
+%% ─────────────────────────────────────────────
+%%  字体
+%% ─────────────────────────────────────────────
+\usepackage{fontspec}
+\usepackage{xeCJK}
+
+% ※（U+203B）Georgia 无此字符，强制用 CJK 字体渲染
+\xeCJKDeclareCharClass{CJK}{"203B}
+
+% geb.ttf：EPUB 自定义字体，含 Tai Viet 占位字形（U+AA9E–U+AAAF）
+% 以及 U+31CF、U+39DF 等特殊字形
+\newfontfamily\gebfont{geb.ttf}[Path=./fonts/]
+
+% 中文正文：思源宋体（Noto Serif CJK SC）
+\setCJKmainfont[
+  BoldFont    = {Noto Serif CJK SC SemiBold},
+  ItalicFont  = {Kaiti SC},          % 楷体作斜体
+]{Noto Serif CJK SC}
+
+% 中文无衬线（标题等）
+\setCJKsansfont[
+  BoldFont = {Heiti SC},
+]{Heiti SC}
+
+% 中文等宽
+\setCJKmonofont{PingFang SC}
+
+% 西文正文：Palatino（等高数字，基线与思源宋体对齐更佳）
+\setmainfont[
+  BoldFont       = {Palatino Bold},
+  ItalicFont     = {Palatino Italic},
+  BoldItalicFont = {Palatino Bold Italic},
+]{Palatino}
+
+% 西文无衬线
+\setsansfont{Helvetica Neue}
+
+% 数学字体
+\usepackage{amsmath,amssymb}
+\usepackage{unicode-math}
+
+%% ─────────────────────────────────────────────
+%%  版面：大16开（185×260mm）页边距（memoir 原生布局）
+%% ─────────────────────────────────────────────
+\setlrmarginsandblock{25mm}{20mm}{*}
+\setulmarginsandblock{22mm}{25mm}{*}
+\setheaderspaces{*}{7mm}{*}
+\setheadfoot{\baselineskip}{12mm}
+\checkandfixthelayout
+
+%% ─────────────────────────────────────────────
+%%  颜色
+%% ─────────────────────────────────────────────
+\usepackage{xcolor}
+\definecolor{accent}{HTML}{1A3A5C}     % 深蓝（章号、页眉线）
+\definecolor{accentlight}{HTML}{4A7DAA}% 中蓝（节标题）
+\definecolor{rulegray}{HTML}{BBBBBB}   % 分隔线
+
+%% ─────────────────────────────────────────────
+%%  章节样式
+%% ─────────────────────────────────────────────
+\usepackage{titlesec}
+
+% 章：大号宋体居中，上方装饰线，下方细实线
+\titleformat{\chapter}[display]
+  {\normalfont\centering}
+  {\color{accent}\small\CJKfamily{}\sffamily 第\ \thechapter\ 章}
+  {0pt}
+  {\color{accent}\LARGE\bfseries\CJKfamily{}\rmfamily}
+  [\vspace{4pt}\textcolor{rulegray}{\titlerule[0.4pt]}]
+
+\titlespacing*{\chapter}{0pt}{30pt}{40pt}
+
+% 节：宋体加粗左对齐，左侧蓝色竖线装饰
+\titleformat{\section}
+  {\normalfont\large\bfseries\color{accentlight}}
+  {}
+  {0pt}
+  {\colorbox{white}{\raisebox{0pt}{\rule[-1pt]{3pt}{14pt}}\hspace{6pt}}}
+  []
+
+\titlespacing*{\section}{0pt}{18pt}{8pt}
+
+% 小节
+\titleformat{\subsection}
+  {\normalfont\normalsize\bfseries}
+  {}
+  {0pt}
+  {}
+
+%% ─────────────────────────────────────────────
+%%  页眉页脚（memoir 内建）
+%% ─────────────────────────────────────────────
+\makepagestyle{geb}
+\makeevenhead{geb}{\small\thepage}{}{\small\itshape\leftmark}
+\makeoddhead {geb}{\small\itshape\rightmark}{}{\small\thepage}
+\makeheadrule {geb}{\textwidth}{0.4pt}
+\pagestyle{geb}
+\renewcommand{\chaptermark}[1]{\markboth{第\ \thechapter\ 章\enspace #1}{第\ \thechapter\ 章\enspace #1}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\enspace #1}}
+
+%% ─────────────────────────────────────────────
+%%  中文标准名称
+%% ─────────────────────────────────────────────
+\renewcommand{\contentsname}{目录}
+\renewcommand{\figurename}{图}
+\renewcommand{\tablename}{表}
+\renewcommand{\appendixname}{附录}
+\renewcommand{\bibname}{参考文献}
+\renewcommand{\indexname}{索引}
+
+%% ─────────────────────────────────────────────
+%%  段落间距与行距（memoir 内建命令）
+%% ─────────────────────────────────────────────
+\setSpacing{1.3}
+\setlength{\parindent}{2em}
+\setlength{\parskip}{3pt plus 1pt minus 1pt}
+\raggedbottom
+
+%% ─────────────────────────────────────────────
+%%  图片与浮动体
+%% ─────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{
+  font=small,
+  labelfont={bf,color=accent},
+  labelsep=quad,
+  width=0.88\linewidth,
+  justification=centering,
+  singlelinecheck=false,
+}
+
+%% pandocbounded：memoir 兼容版，限制图片最大宽度和高度
+\newcommand*\pandocbounded[1]{%
+  \begingroup
+  \setkeys{Gin}{width=\linewidth,height=0.8\textheight,keepaspectratio}%
+  #1%
+  \endgroup
+}
+\def\fps@figure{htbp}
+
+%% ─────────────────────────────────────────────
+%%  引用块样式
+%% ─────────────────────────────────────────────
+\usepackage{mdframed}
+\mdfdefinestyle{gebquote}{
+  leftline=true,
+  rightline=false,
+  topline=false,
+  bottomline=false,
+  linewidth=2pt,
+  linecolor=accentlight,
+  backgroundcolor=black!3,
+  innerleftmargin=12pt,
+  innerrightmargin=8pt,
+  innertopmargin=6pt,
+  innerbottommargin=6pt,
+}
+\renewenvironment{quote}
+  {\begin{mdframed}[style=gebquote]\small}
+  {\end{mdframed}}
+
+%% ─────────────────────────────────────────────
+%%  表格
+%% ─────────────────────────────────────────────
+\usepackage{longtable,booktabs,array,multirow,calc}
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+
+% 美化 booktabs 规则
+\setlength{\aboverulesep}{0pt}
+\setlength{\belowrulesep}{0pt}
+\setlength{\heavyrulewidth}{0.8pt}
+\setlength{\lightrulewidth}{0.4pt}
+
+%% ─────────────────────────────────────────────
+%%  脚注
+%% ─────────────────────────────────────────────
+\usepackage[
+  bottom,
+  hang,
+  flushmargin,
+]{footmisc}
+\setlength{\footnotemargin}{1.5em}
+\renewcommand{\footnoterule}{%
+  \vspace{4pt}\noindent\textcolor{rulegray}{\rule{0.3\linewidth}{0.4pt}}\vspace{4pt}%
+}
+
+%% ─────────────────────────────────────────────
+%%  目录样式
+%% ─────────────────────────────────────────────
+\usepackage{titletoc}
+
+%% memoir 的 chapternumberline/partnumberline 需映射到 \numberline
+%% 才能被 titletoc 识别为「有编号」条目
+\makeatletter
+\renewcommand{\chapternumberline}[1]{\numberline{#1}}
+\renewcommand{\partnumberline}[1]{\numberline{#1}}
+\makeatother
+
+\titlecontents{chapter}[0em]
+  {\addvspace{6pt}\bfseries\color{accent}}
+  {\makebox[3em][l]{\thecontentslabel}}
+  {}
+  {\hfill\contentspage}
+
+\titlecontents{section}[3em]
+  {\addvspace{2pt}\small}
+  {}
+  {}
+  {\titlerule*[0.5em]{.}\contentspage}
+
+%% ─────────────────────────────────────────────
+%%  超链接
+%% ─────────────────────────────────────────────
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{}
+\urlstyle{same}
+\usepackage{hyperref}
+\hypersetup{
+  pdftitle={哥德尔、艾舍尔、巴赫——集异璧之大成},
+  pdfauthor={〔美〕侯世达},
+  pdflang={zh-CN},
+  colorlinks=true,
+  linkcolor={accent},
+  urlcolor={accentlight},
+  citecolor={accent},
+  pdfcreator={XeLaTeX + GEB Template},
+}
+
+%% ─────────────────────────────────────────────
+%%  杂项
+%% ─────────────────────────────────────────────
+\usepackage{microtype}
+\setlength{\emergencystretch}{3em}
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% 对话角色加粗
+\newcommand{\speaker}[1]{\textbf{#1}}
+
+%% ─────────────────────────────────────────────
+%%  GEB v2 字体命令
+%% ─────────────────────────────────────────────
+\newCJKfontfamily\kaitifamily[BoldFont={Kaiti SC Bold}]{Kaiti SC}
+\newcommand{\kaititext}[1]{{\kaitifamily #1}}
+\newcommand{\kaitismall}[1]{{\kaitifamily\small #1}}
+\newcommand{\kaitibold}[1]{{\kaitifamily\bfseries #1}}
+\newcommand{\heititext}[1]{{\sffamily\bfseries #1}}
+\newcommand{\heitismall}[1]{{\sffamily\bfseries\small #1}}
+\newcommand{\dialogname}[1]{{\sffamily\bfseries #1}}
+\newcommand{\westerntext}[1]{{\rmfamily #1}}
+\newcommand{\westernital}[1]{{\rmfamily\itshape #1}}
+
+%% ─────────────────────────────────────────────
+%%  GEB v2 排版环境（memoir 内建 hangparas，不需要 hanging 宏包）
+%% ─────────────────────────────────────────────
+
+% 对话悬挂缩进行
+\newenvironment{hangdialog}{%
+  \begin{hangparas}{2em}{1}%
+}{%
+  \par\end{hangparas}%
+}
+
+% 楷体舞台指示（居中小楷）
+\newenvironment{stagedir}{%
+  \begin{center}\kaitifamily\small%
+}{%
+  \end{center}%
+}
+
+% 对话引导语（楷体斜体缩进）
+\newenvironment{dialogguide}{%
+  \begin{adjustwidth}{1em}{0em}\kaitifamily\itshape\small%
+}{%
+  \end{adjustwidth}%
+}
+
+% 仿宋/楷体引用块（带左竖线）
+\newenvironment{fsquote}{%
+  \begin{mdframed}[style=gebquote]\kaitifamily\small%
+}{%
+  \end{mdframed}%
+}
+
+% 楷体加粗引用框
+\newenvironment{ktquote}{%
+  \begin{mdframed}[style=gebquote]\kaitifamily\small%
+}{%
+  \end{mdframed}%
+}
+
+% 禅宗公案块
+\newenvironment{zenkoan}{%
+  \begin{mdframed}[style=gebquote]\kaitifamily\small%
+}{%
+  \end{mdframed}%
+}
+
+% 禅宗公案诗
+\newenvironment{zenkoanpoem}{%
+  \begin{center}\kaitifamily\small%
+}{%
+  \end{center}%
+}
+
+% 图片副说明（小楷居中，灰色）
+\newenvironment{imgsub}{%
+  \begin{center}\kaitifamily\small\color{rulegray}%
+}{%
+  \end{center}%
+}
+
+% 对话诗歌
+\newenvironment{dialogpoem}{%
+  \begin{adjustwidth}{3em}{0em}\kaitifamily%
+}{%
+  \end{adjustwidth}%
+}
+
+% 章节前置数字大标题（如"第一章"）
+\newenvironment{chappreheader}{%
+  \begin{center}\large\sffamily\bfseries\color{accent}%
+}{%
+  \end{center}\vspace{-10pt}%
+}
+
+% 部分前置大标题
+\newenvironment{partpreheader}{%
+  \begin{center}\Large\sffamily\bfseries\color{accent}%
+}{%
+  \end{center}\vspace{-10pt}%
+}
+
+%% ─────────────────────────────────────────────
+%%  扉页（自定义，替换 maketitle）
+%% ─────────────────────────────────────────────
+\newcommand{\gebmaketitle}{%
+  \begin{titlingpage}
+    \vspace*{6\baselineskip}
+    \begin{center}
+      {\fontsize{28}{34}\selectfont\bfseries\color{accent}
+        哥德尔、艾舍尔、巴赫}\\[12pt]
+      {\Large\color{rulegray}——集异璧之大成}\\[40pt]
+      \textcolor{rulegray}{\rule{0.4\linewidth}{0.4pt}}\\[20pt]
+      {\large \textit{Gödel, Escher, Bach: An Eternal Golden Braid}}\\[6pt]
+      {\normalsize \color{accentlight} Douglas R.\ Hofstadter}\\[40pt]
+      {\normalsize 〔美〕侯世达　著\\[4pt]
+        本书翻译组　译}\\[60pt]
+      {\small\color{rulegray} 商务印书馆}
+    \end{center}
+    \vfill
+  \end{titlingpage}
+}
+
+%% pandoc 在 body 中会注入 \babel@toc，提供空定义避免报错
+\makeatletter
+\providecommand{\babel@toc}[2]{}
+\makeatother
+
+%% memoir + XeLaTeX 下需手动告知 xdvipdfmx 纸张尺寸
+\AtBeginDocument{%
+  \special{papersize=\the\paperwidth,\the\paperheight}%
+}
+
+%% ═══════════════════════════════════════════
+%%  正文开始
+%% ═══════════════════════════════════════════
+\begin{document}
+\frontmatter
+\gebmaketitle
+
+\cleardoublepage
+{
+\hypersetup{linkcolor=black}
+\setcounter{tocdepth}{1}
+\tableofcontents
+}
+\cleardoublepage
+\mainmatter
+\markboth{}{}
+
+$body$
+
+\end{document}
