@@ -257,6 +257,7 @@
 %%  杂项
 %% ─────────────────────────────────────────────
 \usepackage{microtype}
+\usepackage{indentfirst}   %% 章节首段也缩进
 \setlength{\emergencystretch}{3em}
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
@@ -2130,7 +2131,15 @@ p & $\Leftrightarrow$ & 等于 \\
 
 \begin{center}
 
-\pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/Formula01.png}}
+$\begin{array}{r}
+  12 \\
+  \times 12 \\
+  \hline
+  24 \\
+  12\phantom{0} \\
+  \hline
+  144
+\end{array}$
 
 \end{center}
 

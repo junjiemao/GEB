@@ -7,6 +7,7 @@
 #   ./build_v2.sh --skip-postprocess  # 跳过后处理（仅 split → 编译）
 #   ./build_v2.sh --pandoc-only    # 只生成 GEB.tex，不做任何后续处理
 #   ./build_v2.sh --compile-only   # 只编译（已有 partXX.tex 时用此选项）
+#   ./build_v2.sh --full           # 编译整本 GEB.tex → GEB.pdf（用于跨 part 引用）
 #   ./build_v2.sh --part 01        # 只编译指定 part（两次 xelatex）
 #
 # 前提：
@@ -38,6 +39,7 @@ SKIP_POSTPROCESS=0
 PANDOC_ONLY=0
 COMPILE_ONLY=0
 SINGLE_PART=""
+FULL_MODE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,6 +47,7 @@ while [[ $# -gt 0 ]]; do
     --skip-postprocess)   SKIP_POSTPROCESS=1;    shift ;;
     --pandoc-only)        PANDOC_ONLY=1;         shift ;;
     --compile-only)       COMPILE_ONLY=1; SKIP_PANDOC=1; SKIP_POSTPROCESS=1; shift ;;
+    --full)               FULL_MODE=1; COMPILE_ONLY=1; SKIP_PANDOC=1; SKIP_POSTPROCESS=1; shift ;;
     --part)               SINGLE_PART="$2";      shift 2 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
@@ -135,6 +138,21 @@ compile_part() {
 if [[ -n "$SINGLE_PART" ]]; then
   echo "▶ [4/4] 编译 part${SINGLE_PART}"
   compile_part "$SINGLE_PART"
+elif [[ $FULL_MODE -eq 1 ]]; then
+  # ── 全文合并编译：直接编译 GEB.tex（支持跨 part 交叉引用） ──────────────
+  echo "▶ [4/4] 全文编译 GEB.tex → split/GEB.pdf（双遍）"
+  for pass in 1 2; do
+    xelatex \
+      -interaction=nonstopmode \
+      -file-line-error \
+      -output-directory="$SPLIT_DIR" \
+      "$TEX_FILE" \
+      > "/tmp/GEB_full_pass${pass}.log" 2>&1 || true
+    echo "    pass ${pass}/2 完成"
+  done
+  pages=$(grep "Output written" "$SPLIT_DIR/GEB.log" 2>/dev/null \
+          | grep -oE '[0-9]+ page' | grep -oE '[0-9]+' || echo "?")
+  echo "  ✓ GEB.pdf → split/  (${pages} 页)"
 else
   # 收集所有 partXX.tex
   PARTS=()

@@ -2098,8 +2098,26 @@ def fix_formula_images(text):
     return text, count
 
 
+def fix_indentfirst_preamble(text):
+    """Fix 29: 在 preamble 中注入 \\usepackage{indentfirst}（若尚未存在）。
+    indentfirst 让 \\chapter* 等命令后的首段也缩进。"""
+    if r'\usepackage{indentfirst}' in text:
+        return text, 0
+    # 插入到 \usepackage{microtype} 之后
+    old = r'\usepackage{microtype}'
+    new = old + '\n\\usepackage{indentfirst}   %% 章节首段也缩进'
+    if old in text:
+        return text.replace(old, new, 1), 1
+    return text, 0
+
+
 def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     """对 GEB.tex 文本执行所有后处理，返回处理后的文本。"""
+
+    # Fix 29: preamble 注入 indentfirst
+    text, n_indent = fix_indentfirst_preamble(text)
+    if verbose:
+        print(f'  [29] indentfirst preamble 注入：{n_indent} 处')
 
     # Fix 1
     text, n_footnotes = fix_empty_footnotes(text)
