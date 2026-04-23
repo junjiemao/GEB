@@ -43,7 +43,14 @@
 
 % 中文无衬线（标题等）
 \setCJKsansfont[
-  BoldFont = {Heiti SC},
+  BoldFont     = {Heiti SC},
+  BoldFeatures = {FakeBold=3},
+]{Heiti SC}
+
+% 黑体加粗专用字族（\heititext、\dialogname 使用）
+\newCJKfontfamily\heifamily[
+  BoldFont     = {Heiti SC},
+  BoldFeatures = {FakeBold=3},
 ]{Heiti SC}
 
 % 中文等宽
@@ -95,12 +102,12 @@
 
 \titlespacing*{\chapter}{0pt}{30pt}{40pt}
 
-% 节：宋体加粗左对齐，左侧蓝色竖线装饰
-\titleformat{\section}
-  {\normalfont\large\bfseries\color{accentlight}}
+% 节：宋体加粗居中
+\titleformat{\section}[block]
+  {\normalfont\large\bfseries\color{accentlight}\centering}
   {}
   {0pt}
-  {\colorbox{white}{\raisebox{0pt}{\rule[-1pt]{3pt}{14pt}}\hspace{6pt}}}
+  {}
   []
 
 \titlespacing*{\section}{0pt}{18pt}{8pt}
@@ -262,7 +269,7 @@
 %%  杂项
 %% ─────────────────────────────────────────────
 \usepackage{microtype}
-\usepackage{indentfirst}   %% 章节首段也缩进
+\usepackage{indentfirst}   %% 章节首段也缩进（memoir 默认不缩进 \chapter* 后首段）
 \setlength{\emergencystretch}{3em}
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
@@ -277,9 +284,9 @@
 \newcommand{\kaititext}[1]{{\kaitifamily #1}}
 \newcommand{\kaitismall}[1]{{\kaitifamily\small #1}}
 \newcommand{\kaitibold}[1]{{\kaitifamily\bfseries #1}}
-\newcommand{\heititext}[1]{{\sffamily\bfseries #1}}
-\newcommand{\heitismall}[1]{{\sffamily\bfseries\small #1}}
-\newcommand{\dialogname}[1]{{\sffamily\bfseries #1}}
+\newcommand{\heititext}[1]{{\heifamily\bfseries #1}}
+\newcommand{\heitismall}[1]{{\heifamily\bfseries\small #1}}
+\newcommand{\dialogname}[1]{{\heifamily\bfseries #1}}
 \newcommand{\westerntext}[1]{{\rmfamily #1}}
 \newcommand{\westernital}[1]{{\rmfamily\itshape #1}}
 

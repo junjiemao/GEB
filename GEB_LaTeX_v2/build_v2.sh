@@ -2,13 +2,15 @@
 # build_v2.sh — GEB LaTeX v2 构建脚本
 #
 # 用法（在 GEB_LaTeX_v2/ 目录内执行，或从任意目录执行）：
-#   ./build_v2.sh                  # 全流程：pandoc → postprocess → split → 并行编译
-#   ./build_v2.sh --skip-pandoc    # 跳过 pandoc（仅 postprocess → split → 编译）
-#   ./build_v2.sh --skip-postprocess  # 跳过后处理（仅 split → 编译）
-#   ./build_v2.sh --pandoc-only    # 只生成 GEB.tex，不做任何后续处理
-#   ./build_v2.sh --compile-only   # 只编译（已有 partXX.tex 时用此选项）
-#   ./build_v2.sh --full           # 编译整本 GEB.tex → GEB.pdf（用于跨 part 引用）
-#   ./build_v2.sh --part 01        # 只编译指定 part（两次 xelatex）
+#   ./build_v2.sh                  # 全流程：pandoc → postprocess（含模板同步）→ split → 编译 GEB.pdf
+#   ./build_v2.sh --split          # 全流程 + 并行编译 7 个 part（速度更快，调试用）
+#   ./build_v2.sh --skip-pandoc    # 跳过 pandoc，仅同步模板/后处理 → split → 编译 GEB.pdf
+#   ./build_v2.sh --sync-template  # 同 --skip-pandoc（语义更直观：模板已改、EPUB 未变）
+#   ./build_v2.sh --skip-postprocess  # 跳过后处理（仅 split → 编译，极少用）
+#   ./build_v2.sh --pandoc-only    # 只生成 GEB.tex（后处理和编译由下次 --skip-pandoc 触发）
+#   ./build_v2.sh --compile-only   # 只编译 GEB.tex → GEB.pdf
+#   ./build_v2.sh --full           # 同 --compile-only（向后兼容）
+#   ./build_v2.sh --part 01        # 只编译指定 part（两次 xelatex，快速预览）
 #
 # 前提：
 #   - pandoc 3.x 已安装（brew install pandoc）
@@ -40,15 +42,18 @@ PANDOC_ONLY=0
 COMPILE_ONLY=0
 SINGLE_PART=""
 FULL_MODE=0
+SPLIT_MODE=0   # 1 = 并行编译 7 个 part（旧默认），0 = 编译整本 GEB.tex
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --skip-pandoc)        SKIP_PANDOC=1;         shift ;;
-    --skip-postprocess)   SKIP_POSTPROCESS=1;    shift ;;
-    --pandoc-only)        PANDOC_ONLY=1;         shift ;;
+    --skip-pandoc)        SKIP_PANDOC=1;                      shift ;;
+    --sync-template)      SKIP_PANDOC=1;                      shift ;;  # 模板已变、EPUB 未变
+    --skip-postprocess)   SKIP_POSTPROCESS=1;                 shift ;;
+    --pandoc-only)        PANDOC_ONLY=1;                      shift ;;
+    --split)              SPLIT_MODE=1;                       shift ;;  # 并行分 part 编译
     --compile-only)       COMPILE_ONLY=1; SKIP_PANDOC=1; SKIP_POSTPROCESS=1; shift ;;
     --full)               FULL_MODE=1; COMPILE_ONLY=1; SKIP_PANDOC=1; SKIP_POSTPROCESS=1; shift ;;
-    --part)               SINGLE_PART="$2";      shift 2 ;;
+    --part)               SINGLE_PART="$2";                   shift 2 ;;
     *) echo "未知参数: $1" >&2; exit 1 ;;
   esac
 done
@@ -135,12 +140,9 @@ compile_part() {
   echo "    ✓ part${part}.pdf  ${pages} 页"
 }
 
-if [[ -n "$SINGLE_PART" ]]; then
-  echo "▶ [4/4] 编译 part${SINGLE_PART}"
-  compile_part "$SINGLE_PART"
-elif [[ $FULL_MODE -eq 1 ]]; then
-  # ── 全文合并编译：直接编译 GEB.tex（支持跨 part 交叉引用） ──────────────
-  echo "▶ [4/4] 全文编译 GEB.tex → split/GEB.pdf（双遍）"
+compile_full() {
+  # ── 全文合并编译：直接编译 GEB.tex（支持跨 part 交叉引用，生成单一 GEB.pdf）──
+  echo "▶ [4/4] 编译 GEB.tex → split/GEB.pdf（双遍）"
   for pass in 1 2; do
     xelatex \
       -interaction=nonstopmode \
@@ -150,11 +152,18 @@ elif [[ $FULL_MODE -eq 1 ]]; then
       > "/tmp/GEB_full_pass${pass}.log" 2>&1 || true
     echo "    pass ${pass}/2 完成"
   done
+  local pages
   pages=$(grep "Output written" "$SPLIT_DIR/GEB.log" 2>/dev/null \
-          | grep -oE '[0-9]+ page' | grep -oE '[0-9]+' || echo "?")
-  echo "  ✓ GEB.pdf → split/  (${pages} 页)"
-else
-  # 收集所有 partXX.tex
+          | grep -oE '[0-9]+ page' | head -1 | grep -oE '[0-9]+' || echo "?")
+  echo "  ✓ split/GEB.pdf  (${pages} 页)"
+}
+
+if [[ -n "$SINGLE_PART" ]]; then
+  echo "▶ [4/4] 编译 part${SINGLE_PART}"
+  compile_part "$SINGLE_PART"
+
+elif [[ $SPLIT_MODE -eq 1 ]]; then
+  # ── 并行分 part 编译（--split，速度快，适合迭代调试） ────────────────────
   PARTS=()
   for f in "$WORK_DIR"/part[0-9][0-9].tex; do
     [[ -f "$f" ]] && PARTS+=("$(basename "$f" .tex | sed 's/part//')")
@@ -171,10 +180,19 @@ else
     PIDS+=($!)
   done
   for pid in "${PIDS[@]}"; do wait "$pid" || true; done
+
+else
+  # ── 默认：编译整本 GEB.tex → GEB.pdf ──────────────────────────────────
+  compile_full
 fi
 
 echo ""
 echo "═══════════════════════════════════════════════"
-echo "  ✓ 构建完成：$SPLIT_DIR/partXX.pdf"
-ls -lh "$SPLIT_DIR"/part*.pdf 2>/dev/null | awk '{print "    "$NF, $5}' || true
+if [[ $SPLIT_MODE -eq 1 ]]; then
+  echo "  ✓ 构建完成：$SPLIT_DIR/part*.pdf"
+  ls -lh "$SPLIT_DIR"/part*.pdf 2>/dev/null | awk '{print "    "$NF, $5}' || true
+else
+  echo "  ✓ 构建完成：$SPLIT_DIR/GEB.pdf"
+  ls -lh "$SPLIT_DIR"/GEB.pdf 2>/dev/null | awk '{print "    "$NF, $5}' || true
+fi
 echo "═══════════════════════════════════════════════"

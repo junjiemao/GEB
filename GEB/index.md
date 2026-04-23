@@ -9,7 +9,7 @@ tags: [MoC]
 > *一条永恒的金带。*
 > — Douglas R. Hofstadter，1979
 
-📄 可以下载更好排版的 [PDF 版本](https://common.cdn.xmatrix.wiki/GEB-main.pdf)
+📄 可以下载更好排版的 [PDF 版本](https://common.cdn.xmatrix.wiki/GEB-v2.pdf)
 
 ## 导言
 
