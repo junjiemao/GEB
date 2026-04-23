@@ -1073,6 +1073,119 @@ def fix_ptitle_to_section(text, epub_path):
 
 
 # ──────────────────────────────────────────────────────────
+#  Fix 25: 图片字幕（duokan-image-subtitle）归并进 figure 环境
+#
+#  pandoc 的 EPUB reader 不保留 <p class="duokan-image-subtitle">
+#  的 CSS 类，使这些字幕文本变成了 figure 环境后面的裸段落。
+#
+#  本 fix 从 EPUB 提取所有 duokan-image-subtitle 文本，
+#  在 GEB.tex 中找到 \end{figure} 后的第一个非空段落，
+#  若该段落（规范化后）与某个字幕文本匹配，则把它移入
+#  figure 环境内，包裹为 \begin{imgsub}...\end{imgsub}。
+#
+#  幂等：移入后段落不再跟在 \end{figure} 后，不会重复处理。
+# ──────────────────────────────────────────────────────────
+
+_EPUB_SUBTITLE_PAT = re.compile(
+    r'<p\b[^>]+class="[^"]*duokan-image-subtitle[^"]*"[^>]*>(.*?)</p>',
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _load_epub_subtitles(epub_path):
+    """从 EPUB 提取所有 duokan-image-subtitle 文本，返回 set（规范化纯文本）。"""
+    subtitles = set()
+    with zipfile.ZipFile(str(epub_path), 'r') as z:
+        for name in z.namelist():
+            if not (name.endswith('.xhtml') or name.endswith('.html')):
+                continue
+            try:
+                content = z.read(name).decode('utf-8', errors='ignore')
+            except Exception:
+                continue
+            for m in _EPUB_SUBTITLE_PAT.finditer(content):
+                plain = _HTML_TAG_PAT.sub('', m.group(1)).strip()
+                if plain:
+                    subtitles.add(plain)
+    return subtitles
+
+
+def _normalize_tex_for_subtitle(line):
+    """将 GEB.tex 裸段落规范化，用于与 EPUB subtitle 文本比较。"""
+    s = line.strip()
+    # 展开 LaTeX 引号
+    s = s.replace("``", '\u201c').replace("''", '\u201d')
+    # \ldots → …
+    s = re.sub(r'\\ldots(?:\{\}|\.\.\.)?', '\u2026', s)
+    # --- → — 等
+    s = s.replace('------', '\u2014\u2014').replace('---', '\u2014')
+    # 去除 LaTeX 命令
+    s = re.sub(r'\\[a-zA-Z]+\{([^}]*)\}', r'\1', s)
+    s = re.sub(r'\\[a-zA-Z]+', '', s)
+    # 去除多余空白
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+
+def fix_image_subtitles(text, epub_path):
+    """
+    Fix 25: 将图片字幕段落移入 figure 环境内。
+
+    模式：\\end{figure}\n\n<subtitle_paragraph>\n\n
+    → \\begin{imgsub}<subtitle>\\end{imgsub}\n\\end{figure}
+    """
+    epub_path = Path(epub_path)
+    if not epub_path.exists():
+        return text, 0
+
+    subtitles = _load_epub_subtitles(epub_path)
+    if not subtitles:
+        return text, 0
+
+    # 构建规范化映射：规范化文本 → 原始文本
+    normalized_map = {}
+    for s in subtitles:
+        normalized_map[s] = s  # 原始文本即规范化文本（来自 EPUB HTML 剥标签后）
+
+    count = 0
+    # 匹配 \end{figure} 后隔空行的段落
+    fig_end_pat = re.compile(
+        r'(\\end\{figure\})'          # \end{figure}
+        r'(\s*\n\n)'                   # 空行
+        r'([^\n\\][^\n]*)\n'           # 裸段落（行首无 \）
+        r'(?=\s*\n)',                  # 后接空行
+    )
+
+    def _replace(m):
+        nonlocal count
+        fig_end = m.group(1)
+        gap = m.group(2)
+        para = m.group(3).strip()
+        norm = _normalize_tex_for_subtitle(para)
+        # 与 EPUB subtitles 比较（精确匹配或宽松匹配）
+        if para in subtitles or norm in subtitles:
+            count += 1
+            return (
+                f'\\begin{{imgsub}}\n{para}\n\\end{{imgsub}}\n'
+                f'{fig_end}'
+                f'{gap}'
+            )
+        # 宽松：长度 > 3 且规范化后出现在任何 subtitle 中
+        for sub in subtitles:
+            if len(norm) > 3 and norm == sub.strip():
+                count += 1
+                return (
+                    f'\\begin{{imgsub}}\n{para}\n\\end{{imgsub}}\n'
+                    f'{fig_end}'
+                    f'{gap}'
+                )
+        return m.group(0)  # 不匹配，保持原样
+
+    text = fig_end_pat.sub(_replace, text)
+    return text, count
+
+
+# ──────────────────────────────────────────────────────────
 #  Fix 24: 清理错误的 \gebfont{非TaiViet内容} 用法
 #
 #  Lua filter 旧版将 <span class="rare"> 全部包裹为 \gebfont{...}，
@@ -1108,8 +1221,17 @@ def fix_gebfont_cleanup(text):
       - \gebfont{\gebfont{}  → 删除（大括号不平衡的空残留）
       - \gebfont{X}          → {\gebfont X}（X 为 Tai Viet 字符时保留）
                             → X（X 为其他字符时，让 Fix 3/Fix 4 处理）
+    附带修复：若 preamble 中的 \newfontfamily\gebfont{geb.ttf} 已被
+    旧版意外破坏为 \newfontfamilygeb.ttf，则恢复。
     """
     count = 0
+
+    # 0. 修复被旧版 Fix 24 破坏的 preamble 字体声明
+    broken_preamble = r'\newfontfamilygeb.ttf[Path=./fonts/]'
+    fixed_preamble  = r'\newfontfamily\gebfont{geb.ttf}[Path=./fonts/]'
+    if broken_preamble in text:
+        text = text.replace(broken_preamble, fixed_preamble)
+        count += 1
 
     # 1. 修复不平衡的 \gebfont{\gebfont{} （两开一关，内容丢失）
     #    这是双重嵌套 <span class="rare"> 产生的 artifact
@@ -1130,7 +1252,8 @@ def fix_gebfont_cleanup(text):
     # 3. 将 \gebfont{X} 形式（Lua filter 旧格式，无外部 {}）统一为：
     #    - Tai Viet 字符 → {\gebfont X}（和 Fix 4 输出格式一致）
     #    - 其他内容      → 直接保留内容（交 Fix 3/Fix 4 处理）
-    old_fmt_pat = re.compile(r'\\gebfont\{((?:[^{}]|\{[^{}]*\})+)\}')
+    # 负向前瞻：排除 \newfontfamily\gebfont{...} 声明（preamble 中的字体定义）
+    old_fmt_pat = re.compile(r'(?<!\\newfontfamily)\\gebfont\{((?:[^{}]|\{[^{}]*\})+)\}')
 
     def _convert(m):
         nonlocal count
@@ -1858,6 +1981,11 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub'):
     if verbose:
         print(f'  [5] figure 环境包裹（\\caption* + \\label）：{n_fig_envs} 处')
 
+    # Fix 25: 图片字幕归并进 figure 环境（须在 Fix 5 之后运行）
+    text, n_imgsubs = fix_image_subtitles(text, epub_path=epub_path)
+    if verbose:
+        print(f'  [25] 图片字幕（duokan-image-subtitle）归入 figure：{n_imgsubs} 处')
+
     # Fix 6
     text, n_special_labels = fix_special_figure_labels(text)
     if verbose:
@@ -1971,6 +2099,9 @@ def main():
     parser.add_argument('-o', '--output', help='输出文件路径（默认原地修改）')
     parser.add_argument('--epub', default='/tmp/GEB_packed.epub',
                         help='EPUB 源文件路径，用于提取脚注内容（默认：/tmp/GEB_packed.epub）')
+    parser.add_argument('--copy-media', metavar='SRC_MEDIA_DIR',
+                        help='将指定 media 目录覆盖复制到输出 .tex 所在目录的 media/ 子目录，'
+                             '例如 --copy-media /path/to/GEB_LaTeX/media')
     parser.add_argument('--dry-run', action='store_true',
                         help='只统计，不写入文件')
     parser.add_argument('-q', '--quiet', action='store_true',
@@ -1996,6 +2127,19 @@ def main():
     output_path = Path(args.output) if args.output else input_path
     output_path.write_text(result, encoding='utf-8')
     print(f'\n写入: {output_path}  ({original_len} → {len(result)} 字符)')
+
+    # 媒体目录复制（--copy-media SRC）
+    if args.copy_media:
+        import shutil
+        src_media = Path(args.copy_media)
+        dst_media = output_path.parent / 'media'
+        if not src_media.exists():
+            print(f'[警告] --copy-media 指定的目录不存在：{src_media}', file=sys.stderr)
+        else:
+            if dst_media.exists():
+                shutil.rmtree(dst_media)
+            shutil.copytree(str(src_media), str(dst_media))
+            print(f'媒体目录已复制：{src_media} → {dst_media}')
 
 
 if __name__ == '__main__':

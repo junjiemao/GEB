@@ -33,7 +33,7 @@
 
 % geb.ttf：EPUB 自定义字体，含 Tai Viet 占位字形（U+AA9E–U+AAAF）
 % 以及 U+31CF、U+39DF 等特殊字形
-\newfontfamilygeb.ttf[Path=./fonts/]
+\newfontfamily\gebfont{geb.ttf}[Path=./fonts/]
 
 % 中文正文：思源宋体（Noto Serif CJK SC）
 \setCJKmainfont[
@@ -438,9 +438,11 @@
 \pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/img_060.png}}
 \phantomsection\label{fig:60}
 \caption*{图60．``无之图''}
+\begin{imgsub}
+刘友庄绘
+\end{imgsub}
 \end{figure}
 
-刘友庄绘
 
 \dialogname{食蚁兽：}你所讲的这张图的构成我现在也看出来了，阿基，不过你说的什么``无''之类的话，我一点也不明白。
 
@@ -731,9 +733,11 @@
 \pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/img_061.jpg}}
 \phantomsection\label{fig:61}
 \caption*{图61．``蚂蚁赋格''}
+\begin{imgsub}
+艾舍尔作（木刻1953）
+\end{imgsub}
 \end{figure}
 
-艾舍尔作（木刻1953）
 
 \dialogname{阿基里斯：}------跟踪其中某一个声部------
 
@@ -966,9 +970,11 @@
 \pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/img_062.png}}
 \phantomsection\label{fig:62}
 \caption*{图62．两个伟大名字的交织}
+\begin{imgsub}
+刘皓明绘
+\end{imgsub}
 \end{figure}
 
-刘皓明绘
 
 \dialogname{乌龟：}在我浏览《平均律钢琴曲集》的这个可爱版本的时候，现在刚好翻过这页，我发现那两个延长记号中的一个马上就要出现了------你好好听听吧，阿基。
 
@@ -1102,9 +1108,11 @@ $n^a+n^b=n^c$
 \pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/img_064.png}}
 \phantomsection\label{fig:64}
 \caption*{图64．一支整体论-简化论的``螺旋桨''}
+\begin{imgsub}
+刘皓明绘
+\end{imgsub}
 \end{figure}
 
-刘皓明绘
 
 \dialogname{乌龟：}我知道你们大家肯定不会相信，可事实上这幅图是由``简化论''一词组成的，方块儿字从左向右不断增大。``化''字是草体，所以食大夫认错了。
 
@@ -1214,9 +1222,11 @@ Brain{]}，纽约：Me-Graw-Hil1，1963年版，第6页。
 \pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/img_067.png}}
 \phantomsection\label{fig:67}
 \caption*{图67．某些神经元样本对模式的反应。}
+\begin{imgsub}
+（a）这个负责边缘检测的神经元寻找左明右暗的垂直边缘。第一列显示了边缘的倾角与该神经元的关系，第二列说明边缘在域中的位置与这个特定神经元无关。（b）显示了超复杂细胞的更具选择性的反应：在这里仅当下行的舌状物通过域中间时反应最强。（c）假想的``祖母细胞''对各种随机刺激的反应。读者不妨思考一下对同一组刺激一个``章鱼细胞''将作何反应。
+\end{imgsub}
 \end{figure}
 
-（a）这个负责边缘检测的神经元寻找左明右暗的垂直边缘。第一列显示了边缘的倾角与该神经元的关系，第二列说明边缘在域中的位置与这个特定神经元无关。（b）显示了超复杂细胞的更具选择性的反应：在这里仅当下行的舌状物通过域中间时反应最强。（c）假想的``祖母细胞''对各种随机刺激的反应。读者不妨思考一下对同一组刺激一个``章鱼细胞''将作何反应。
 
 从侧膝体出发，信号向后传至视觉皮层。在这里某些新的加工出现了。视觉皮层细胞分为三类：简单的、复杂的和超复杂的。简单细胞的活动方式和视网膜细胞或侧膝体细胞相似：它们对视网膜特定区域中与背景形成对比的亮点或暗点作出反应。而复杂细胞则通常要从上百个其它细胞接收信息作为输入，识别视网膜上成特定倾角的明暗线条（见\hyperref[fig:67]{图67}）。超复杂细胞对应于沿特定方向运动的角、线条甚至于``舌状物''（也见\hyperref[fig:67]{图67}）。最后一种细胞是高度专门化的，因此它们有时被称为``高阶超复杂细胞''。
 
@@ -2447,9 +2457,11 @@ Die mohmen Räth\textquotesingle{} ausgraben.
 \pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/img_071.jpg}}
 \phantomsection\label{fig:71}
 \caption*{图71．秩序与紊乱}
+\begin{imgsub}
+艾舍尔作（蚀版画，1950）
+\end{imgsub}
 \end{figure}
 
-艾舍尔作（蚀版画，1950）
 
 \dialogname{阿基里斯：}``无穷巧合''？自然数中没有巧合的事------没有任何事情不是出自某种背后的规律性。不说一万亿，就说7吧。处理它更容易些，它比较小。7具有阿基里斯性质。
 
@@ -2912,9 +2924,11 @@ TWO-TO-THE-THREE-TO-THE{[}2{]}
 \pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/img_072.png}}
 \phantomsection\label{fig:72}
 \caption*{图72．一个待调用BlooP程序的结构}
+\begin{imgsub}
+由于这个程序是自足的，每个过程定义中只能调用定义在它前面的过程。
+\end{imgsub}
 \end{figure}
 
-由于这个程序是自足的，每个过程定义中只能调用定义在它前面的过程。
 
 现在BlooP是我们用来定义可预知终止的计算的语言。可以用BlooP来计算的函数的标准名称是``原始递归函数''；而可以用BlooP测试来验证的性质的标准名称是``原始递归谓词''。这样函数{\gebfont ꪢ}就是个原始递归函数，而命题``n是个素数''则是个原始递归谓词。
 
@@ -3463,9 +3477,11 @@ Allison{]}的著作。
 \pandocbounded{\includegraphics[keepaspectratio]{./media/OEBPS/Images/img_074.jpg}}
 \phantomsection\label{fig:74}
 \caption*{图74．上和下}
+\begin{imgsub}
+艾舍尔作（石版画，1947）
+\end{imgsub}
 \end{figure}
 
-艾舍尔作（石版画，1947）
 
 \dialogname{阿基里斯：}我想让你从塔楼顶上观赏一下美景。
 
