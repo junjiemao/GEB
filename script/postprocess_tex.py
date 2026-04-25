@@ -2098,6 +2098,96 @@ def fix_formula_images(text):
     return text, count
 
 
+def fix_broken_quote_env_end(text):
+    """Fix 32: 修复 \\end{env} 错误地插入 ``...'' 跨行引号中间的问题。
+
+    当 \\end{fsquote}（或 dialogguide）插入在 `` 开启但 '' 尚未闭合的行之间，
+    将 \\end{env} 移至该段落（空行前）的末尾。
+
+    修复前：
+      ...将它冠以``Musikalisches
+      \\end{fsquote}
+      Opfer''...句。\\hyperref...{3}}}
+
+    修复后：
+      ...将它冠以``Musikalisches Opfer''...句。\\hyperref...{3}}}
+      \\end{fsquote}
+    """
+    count = 0
+    _ENVS = r'(?:fsquote|dialogguide|ktquote)'
+
+    # 行1：含 `` 且不以 '' 结尾（引号未在同行闭合）
+    # 行2：\end{env}
+    # 行3+：续行文本（至少一行，非贪婪到第一个空行）
+    # 行末：空行
+    pat = re.compile(
+        r"(``[^\n]+(?<!''))\n"           # group 1: 行1（含 `` 但不以 '' 结尾）
+        r"(\\end\{" + _ENVS + r"\})\n"  # group 2: \end{env}
+        r"((?:[^\n]+\n)+?)"              # group 3: 一行或多行续文（非贪婪）
+        r"(\n)",                          # group 4: 空行
+        re.MULTILINE
+    )
+
+    def repl(m):
+        nonlocal count
+        count += 1
+        # line1 + 空格 + 续行，再接 \end{env}\n
+        return m.group(1) + ' ' + m.group(3) + m.group(2) + '\n' + m.group(4)
+
+    text = pat.sub(repl, text)
+    return text, count
+
+
+def fix_chinese_quotes(text):
+    """Fix 31: LaTeX 式引号 ``...'' → 「...」，`...' → 『...』；
+    Unicode 弯引号相同处理。
+
+    允许 ``...'' 跨单次换行（不跨空行）。
+    `...' 只在含 CJK 上下文时替换，避免误触 LaTeX 命令参数。
+    """
+    count = [0]
+
+    def _dbl(content):
+        count[0] += 1
+        return '\u300c' + content + '\u300d'
+
+    def _sgl(content):
+        count[0] += 1
+        return '\u300e' + content + '\u300f'
+
+    # 1. LaTeX 双引号 ``...'' → 「...」（允许跨单行，禁止跨空行）
+    text = re.sub(
+        r"``((?:(?!\n\n).)*?)''",
+        lambda m: _dbl(m.group(1)),
+        text, flags=re.DOTALL
+    )
+
+    # 2. Unicode 左右双引号 \u201c...\u201d → 「...」
+    text = re.sub(
+        r'\u201c((?:(?!\n\n).)*?)\u201d',
+        lambda m: _dbl(m.group(1)),
+        text, flags=re.DOTALL
+    )
+
+    # 3. Unicode 左右单引号 \u2018...\u2019 → 『...』
+    text = re.sub(
+        r'\u2018((?:(?!\n\n).)*?)\u2019',
+        lambda m: _sgl(m.group(1)),
+        text, flags=re.DOTALL
+    )
+
+    # 4. LaTeX 单引号 `...' → 『...』（仅在 CJK 上下文）
+    _cjk_re = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf]')
+    def _sgl_if_cjk(m):
+        ctx = m.string[max(0, m.start() - 50) : m.end() + 50]
+        if _cjk_re.search(ctx):
+            return _sgl(m.group(1))
+        return m.group(0)
+    text = re.sub(r"`([^`'\n]+)'", _sgl_if_cjk, text)
+
+    return text, count[0]
+
+
 def fix_indentfirst_preamble(text):
     """Fix 29: 在 preamble 中注入 \\usepackage{indentfirst}（若尚未存在）。
     indentfirst 让 \\chapter* 等命令后的首段也缩进。"""
@@ -2302,6 +2392,16 @@ def postprocess(text, verbose=True, epub_path='/tmp/GEB_packed.epub',
     text, n_qt = fix_quote_text(text, epub_path=epub_path)
     if verbose:
         print(f'  [27] quote_text → fsquote 环境：{n_qt} 处')
+
+    # Fix 32: 修复 \end{env} 错误地插入 ``...'' 跨行引号中间（须在 Fix 31 之前）
+    text, n_broken = fix_broken_quote_env_end(text)
+    if verbose:
+        print(f'  [32] 修复引号内错位 \\end{{env}}：{n_broken} 处')
+
+    # Fix 31: LaTeX/Unicode 引号 → 中文引号（须在指纹匹配 Fix 26/27 之后）
+    text, n_quotes = fix_chinese_quotes(text)
+    if verbose:
+        print(f'  [31] LaTeX/Unicode 引号 → 中文引号：{n_quotes} 处')
 
     # Fix 10
     text, n_chapters = fix_section_to_chapter(text)
